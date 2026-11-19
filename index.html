@@ -388,7 +388,7 @@
       }
       state.rolling=true;render();
       try{
-        var r=await rpc("open_case",{p_case_id:c.id,p_quantity:requestedQuantity,p_risk_level:state.risk});
+        var r=await rpc("open_case",{p_case_id:String(c.id),p_quantity:Number(requestedQuantity),p_risk_level:String(state.risk||"M")});
         if(!Array.isArray(r.drops)||r.drops.length!==requestedQuantity||!Array.isArray(r.inventory_ids)||r.inventory_ids.length!==r.drops.length){
           state.rolling=false;await refreshProfile();render();
           throw new Error("Сервер вернул неполные данные выигрыша; проверьте сейф перед повторным открытием.");
@@ -678,14 +678,14 @@
           sbp_phone:settingValue("setting-sbp-phone"),sbp_bank:settingValue("setting-sbp-bank"),sbp_recipient:settingValue("setting-sbp-recipient"),
           card_number:settingValue("setting-card-number"),card_recipient:settingValue("setting-card-recipient"),
           usdt_trc20:settingValue("setting-usdt-wallet"),cryptobot_url:settingValue("setting-cryptobot-url"),
-          enable_sbp:document.getElementById("setting-enable-sbp").checked,enable_card:document.getElementById("setting-enable-card").checked,
-          enable_usdt:document.getElementById("setting-enable-usdt").checked
+          enable_sbp:Boolean(document.getElementById("setting-enable-sbp").checked),enable_card:Boolean(document.getElementById("setting-enable-card").checked),
+          enable_usdt:Boolean(document.getElementById("setting-enable-usdt").checked)
         };
         rpc("admin_save_settings",{
-          p_rtp:Number(document.getElementById("setting-rtp").value)/100,p_streamer_mode:document.getElementById("setting-streamer").checked,
+          p_rtp:Number(document.getElementById("setting-rtp").value)/100,p_streamer_mode:Boolean(document.getElementById("setting-streamer").checked),
           p_banner_title:document.getElementById("setting-banner").value,p_live_drop_speed:Number(document.getElementById("setting-speed").value),
           p_card_requisite:paymentSettings.card_number,p_sbp_requisite:paymentSettings.sbp_phone,p_usdt_requisite:paymentSettings.usdt_trc20,
-          p_demo_deposit:document.getElementById("setting-demo").checked,p_payment:paymentSettings
+          p_demo_deposit:Boolean(document.getElementById("setting-demo").checked),p_payment:paymentSettings
         }).then(refreshPublic).then(loadAdmin).then(function(){toast("Платежные настройки сохранены");}).catch(function(x){toast(x.message);});
       }
       else if(a==="admin-save-webhook-secret"){
@@ -699,7 +699,7 @@
         if(!Number.isFinite(usdtRub)||usdtRub<=0||!Number.isFinite(tonRub)||tonRub<=0)return toast("Курсы USDT и TON должны быть больше нуля");
         rpc("admin_save_cryptobot_settings",{
           p_token:cryptoToken,p_usdt_rub_rate:usdtRub,p_ton_rub_rate:tonRub,
-          p_enabled:document.getElementById("setting-enable-cryptobot").checked
+          p_enabled:Boolean(document.getElementById("setting-enable-cryptobot").checked)
         }).then(function(){
           document.getElementById("setting-cryptobot-token").value="";
           return refreshPublic();
