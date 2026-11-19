@@ -16,6 +16,8 @@
     .case-glyph{display:grid;place-items:center;width:92px;height:92px;border:1px solid #f5cb6355;border-radius:26px;background:linear-gradient(145deg,#244236,#101713);color:#f5cb63;font-size:42px;font-weight:900;box-shadow:0 12px 35px #0008,inset 0 0 24px #34d39917;animation:float 3s ease-in-out infinite}.case-cover{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 15px #0008)}.custom-art{object-fit:contain;border-radius:10px}.admin-editor{margin-top:14px}.admin-preview,.admin-preview-empty{display:grid;width:100%;height:155px;place-items:center;border:1px dashed #ffffff22;border-radius:10px;background:#0d1311;object-fit:contain}.admin-preview-empty .case-glyph{width:88px;height:88px}.admin-prizes{display:grid;gap:10px}.admin-prize-row{display:grid;grid-template-columns:1.2fr .65fr .65fr 1fr 1.2fr 1fr auto;align-items:end;gap:8px;border:1px solid var(--line);border-radius:10px;background:#0d1311;padding:10px}.admin-prize-row .field{margin:0}.admin-prize-row select+select{margin-top:5px}.prize-preview{width:70px;height:60px;object-fit:contain}.danger-button{color:#ff9aa1}.inline-check{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--muted);font-size:11px}.inline-check input{width:auto}.admin-editor .section-title{align-items:center}.admin-editor .section-title span{font-size:12px}.admin-editor input[type=file]{padding:7px}.toast{border-color:#34d39955}.admin-shortcut{white-space:nowrap;border-color:#34d39955;color:var(--lime);font-weight:900;padding:10px 12px}.admin-compact{display:none}
     @media(max-width:900px){.admin-prize-row{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-shortcut{padding:9px 10px}.admin-full{display:none}.admin-compact{display:inline}}
     @media(max-width:520px){.admin-prize-row{grid-template-columns:1fr}.admin-editor .section-title{display:block}.admin-editor .section-title span{display:block;margin-top:5px}}
+    .payment-modal{width:min(600px,100%)}.payment-timer{margin:12px 0;padding:10px 12px;border:1px solid #f59e0b44;border-radius:9px;background:#f59e0b0c;color:#f8d477}.payment-timer b{float:right}.payment-fields{display:grid;gap:8px}.payment-line{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:9px;background:#0d1311;padding:10px 12px}.payment-line small,.payment-line b{display:block}.payment-line small{color:var(--muted);font-size:10px}.payment-line b{overflow-wrap:anywhere;font-size:13px}.payment-line .secondary{flex:0 0 auto;padding:8px;font-size:10px}.crypto-link{display:inline-block;margin-top:10px;text-decoration:none}.methods .inline-check{margin:0}.panel hr{border:0;border-top:1px solid var(--line);margin:18px 0}.table small{overflow-wrap:anywhere}
+    @media(max-width:520px){.payment-line{align-items:flex-start}.payment-line .secondary{padding:7px 8px}.payment-modal .modal-actions{flex-wrap:wrap}}
   </style>
 </head>
 <body>
@@ -24,7 +26,7 @@
     var SUPABASE_URL="https://xdgtekgccftmvsjslcdh.supabase.co";
     var SUPABASE_ANON_KEY="sb_publishable_KH2vlcyv9pdYgEq-wb9L0g_Ge3iw751";
     var db=window.supabase&&window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    var state={page:"cases",user:null,session:null,role:"user",balance:0,inventory:[],profile:null,live:[],cases:[],items:[],moneydropSchema:false,settings:{rtp_multiplier:1,streamer_mode:false,demo_deposit:true,card_requisite:"",sbp_requisite:"",usdt_requisite:"",banner_title:"MoneyDrop",live_drop_speed:5},caseId:null,risk:"M",quantity:1,rolling:false,winnings:null,winningsIds:[],modal:null,authEmail:"",cashTab:"deposit",cashStep:"method",method:"sbp",amount:500,promo:"",withdrawMethod:"sbp",withdrawAddress:"",withdrawAmount:500,adminTab:"dashboard",adminData:{},adminCase:null,adminCaseItems:[],audio:null,sound:true,toast:""};
+    var state={page:"cases",user:null,session:null,role:"user",balance:0,inventory:[],profile:null,live:[],cases:[],items:[],moneydropSchema:false,settings:{rtp_multiplier:1,streamer_mode:false,demo_deposit:true,card_requisite:"",sbp_requisite:"",usdt_requisite:"",sbp_phone:"",sbp_bank:"",sbp_recipient:"",card_number:"",card_recipient:"",usdt_trc20:"",cryptobot_url:"",enable_sbp:true,enable_card:true,enable_usdt:true,banner_title:"MoneyDrop",live_drop_speed:5},caseId:null,risk:"M",quantity:1,rolling:false,winnings:null,winningsIds:[],modal:null,authEmail:"",cashTab:"deposit",cashStep:"method",cashRequest:null,paymentTimer:null,paymentCreating:false,method:"sbp",amount:500,promo:"",withdrawMethod:"sbp",withdrawAddress:"",withdrawAmount:500,adminTab:"dashboard",adminData:{},adminCase:null,adminCaseItems:[],pendingTransactionsSeen:null,txPollTimer:null,audio:null,sound:true,toast:""};
     var root=document.getElementById("app");
 
     function money(v){return Math.round(Number(v)||0).toLocaleString("ru-RU")+" ₽";}
@@ -122,13 +124,13 @@
     }
     function renderInventory(){
       var inv=state.inventory||[];
-      return '<main class="inner main"><div class="opening-head"><div><h1>Личный сейф</h1><p>Все выигрыши остаются защищенными в вашем аккаунте.</p></div><button class="secondary" data-action="sell-all" '+(!inv.length?"disabled":"")+'>Продать всё</button></div>'+ (inv.length?'<div class="inventory">'+inv.map(function(item){var it=getItem(item.itemId||item.id);return '<div class="inventory-card">'+moneyArt(item.image_url?item:it)+'<b>'+esc(item.name||it.name)+'</b><span>'+money(item.price||it.value)+'</span><button class="secondary" style="margin-top8px;width:100%" data-action="sell-item" data-uid="'+esc(item.uid||item.id)+'">Зачислить</button></div>';}).join(""):'<div class="panel">Сейф пуст. Откройте денежный кейс.</div>')+'</div></main>';
+      return '<main class="inner main"><div class="opening-head"><div><h1>Личный сейф</h1><p>Все выигрыши остаются защищенными в вашем аккаунте.</p></div><button class="secondary" data-action="sell-all" '+(!inv.length?"disabled":"")+'>Продать всё</button></div>'+ (inv.length?'<div class="inventory">'+inv.map(function(item){var it=getItem(item.itemId||item.id);return '<div class="inventory-card">'+moneyArt(item.image_url?item:it)+'<b>'+esc(item.name||it.name)+'</b><span>'+money(item.price||it.value)+'</span><button class="secondary" style="margin-top:8px;width:100%" data-action="sell-item" data-uid="'+esc(item.uid||item.id)+'">Зачислить</button></div>';}).join(""):'<div class="panel">Сейф пуст. Откройте денежный кейс.</div>')+'</div></main>';
     }
     function renderProfile(){
       return '<main class="inner main"><div class="opening-head"><div><h1>Личный кабинет</h1><p>'+esc((state.profile&&state.profile.username)||"Игрок")+'</p></div><button class="secondary" data-action="logout" '+(!state.user?"disabled":"")+'>Выйти</button></div><div class="grid2"><div class="panel"><span>Основной баланс</span><h2>'+money(state.balance)+'</h2><button class="primary" data-action="cash">Пополнить</button><button class="secondary" data-action="withdraw">Вывести</button></div><div class="panel"><span>Статистика</span><h2>'+((state.profile&&state.profile.opened)||0)+' кейсов</h2><p>Лучший выигрыш: '+money((state.profile&&state.profile.best_drop)||0)+'</p></div></div></main>';
     }
     function renderUpgrade(){
-      return '<main class="inner main"><div class="opening-head"><div><h1>Апгрейд денежного сейфа</h1><p>Повышайте номинал предмета из инвентаря.</p></div></div><div class="panel"><p>Выберите приз в сейфе и целевой номинал. Механика доступна после открытия кейса и входа в аккаунт.</p><div class="grid2"><div><label>Предмет в сейфе</label><select id="upgrade-source"><option value="">Выберите приз</option>'+state.inventory.map(function(i){return '<option value="'+esc(i.uid||i.id)+'">'+esc(i.name||getItem(i.itemId||i.id).name)+'</option>';}).join("")+'</select></div><div><label>Цель апгрейда</label><select id="upgrade-target">'+ITEMS.slice(4).map(function(i){return '<option value="'+esc(i.id)+'">'+esc(i.name)+' — '+money(i.value)+'</option>';}).join("")+'</select></div></div><button class="primary" style="margin-top12px" data-action="upgrade">Начать апгрейд</button></div></main>';
+      return '<main class="inner main"><div class="opening-head"><div><h1>Апгрейд денежного сейфа</h1><p>Повышайте номинал предмета из инвентаря.</p></div></div><div class="panel"><p>Выберите приз в сейфе и целевой номинал. Механика доступна после открытия кейса и входа в аккаунт.</p><div class="grid2"><div><label>Предмет в сейфе</label><select id="upgrade-source"><option value="">Выберите приз</option>'+state.inventory.map(function(i){return '<option value="'+esc(i.uid||i.id)+'">'+esc(i.name||getItem(i.itemId||i.id).name)+'</option>';}).join("")+'</select></div><div><label>Цель апгрейда</label><select id="upgrade-target">'+ITEMS.slice(4).map(function(i){return '<option value="'+esc(i.id)+'">'+esc(i.name)+' — '+money(i.value)+'</option>';}).join("")+'</select></div></div><button class="primary" style="margin-top:12px" data-action="upgrade">Начать апгрейд</button></div></main>';
     }
     function renderAdmin(){
       if(!isAdmin())return '<main class="inner main"><div class="panel">Недостаточно прав администратора.</div></main>';
@@ -145,6 +147,21 @@
       var icons=["$","₽","▣","◆","♛","▰"];
       return '<div class="panel admin-editor"><div class="opening-head"><div><h2>'+(c.isNew?"Новый кейс":"Редактирование кейса")+'</h2><p>Обложка принимает URL или изображение до 1 МБ.</p></div><button class="secondary" data-action="admin-case-cancel">Закрыть</button></div><div class="grid2"><div><div class="field"><label>Название</label><input id="case-name" value="'+esc(c.name)+'" maxlength="80"></div><div class="field"><label>Цена открытия, ₽</label><input id="case-price" type="number" min="1" step="1" value="'+Number(c.price||10)+'"></div><div class="field"><label>Категория</label><select id="case-category">'+[["fast","Быстрый старт"],["bank","Банковские сейфы"],["vip","VIP / Миллионер"],["risk","Риск-кейсы"]].map(function(x){return '<option value="'+x[0]+'" '+(c.category===x[0]?"selected":"")+'>'+x[1]+'</option>';}).join("")+'</select></div><div class="field"><label>Бейдж</label><input id="case-badge" value="'+esc(c.badge||"")+'" maxlength="24" placeholder="HOT, NEW, VIP, x4"></div><div class="grid2"><div class="field"><label>Неоновый цвет</label><select id="case-theme">'+[["lime","Лайм"],["green","Изумруд"],["gold","Золото"],["blue","Синий"],["red","Красный"]].map(function(x){return '<option value="'+x[0]+'" '+((c.theme||"lime")===x[0]?"selected":"")+'>'+x[1]+'</option>';}).join("")+'</select></div><div class="field"><label>Иконка</label><select id="case-icon">'+icons.map(function(icon){return '<option '+((c.icon||"$")===icon?"selected":"")+'>'+icon+'</option>';}).join("")+'</select></div></div><div class="field"><label>Описание</label><input id="case-description" value="'+esc(c.description||"")+'" maxlength="120"></div></div><div><div class="field"><label>Обложка: ссылка</label><input id="case-image" value="'+esc(c.image_url||"")+'" placeholder="https://..."></div><div class="field"><label>Или загрузить GIF / WebP / PNG / JPG (до 1 МБ)</label><input type="file" accept="image/png,image/jpeg,image/gif,image/webp" data-image-kind="case"></div>'+preview+'<label class="inline-check"><input id="case-active" type="checkbox" '+(c.active===false?"":"checked")+'> Кейс активен</label></div></div><div class="section-title"><h2>Призы и шансы</h2><span>Сумма шансов: <b class="'+(Math.abs(total-100)<.001?"green":"red")+'">'+total.toFixed(2)+'%</b> · RTP: <b>'+((Number(c.price)>0?expected/Number(c.price)*100:0).toFixed(2))+'%</b></span></div><div class="admin-prizes">'+items.map(function(item,index){return '<div class="admin-prize-row" data-index="'+index+'"><div class="field"><label>Название / номинал</label><input data-prize-field="name" value="'+esc(item.name||"")+'" placeholder="Приз 500 ₽"></div><div class="field"><label>Сумма, ₽</label><input data-prize-field="price" type="number" min="1" value="'+Number(item.price||10)+'"></div><div class="field"><label>Шанс, %</label><input data-prize-field="chance" type="number" min="0.001" max="100" step="0.001" value="'+Number(item.chance||0)+'"></div><div class="field"><label>Тип / иконка</label><select data-prize-field="kind">'+[["coin","Монета"],["cash","Купюры"],["card","Карта"],["ingot","Слиток"]].map(function(x){return '<option value="'+x[0]+'" '+((item.kind||"cash")===x[0]?"selected":"")+'>'+x[1]+'</option>';}).join("")+'</select><select data-prize-field="icon">'+icons.map(function(icon){return '<option '+((item.icon||"₽")===icon?"selected":"")+'>'+icon+'</option>';}).join("")+'</select></div><div class="field"><label>Картинка / GIF URL</label><input data-prize-field="image_url" value="'+esc(item.image_url||"")+'" placeholder="https://..."><input type="file" accept="image/png,image/jpeg,image/gif,image/webp" data-image-kind="prize" data-index="'+index+'"></div><div class="field"><label>Предпросмотр</label>'+(item.image_url?'<img class="prize-preview" src="'+esc(item.image_url)+'" alt="">':moneyArt({kind:item.kind||"cash",name:item.name||"₽",value:item.price||0,icon:item.icon}))+'</div><button class="secondary danger-button" data-action="admin-remove-prize" data-index="'+index+'">Удалить приз</button></div>';}).join("")+'</div><div class="modal-actions"><button class="secondary" data-action="admin-add-prize">Добавить приз</button><button class="secondary" data-action="admin-normalize-chances">Нормировать шансы до 100%</button><button class="primary" data-action="admin-save-case">'+(c.isNew?"Создать кейс":"Сохранить кейс")+'</button></div></div>';
     }
+    function transactionDetail(t){
+      if(t.type==="withdraw")return t.details||"Реквизиты не указаны";
+      var p=t.payment_data||{},parts=[];
+      if(p.comment)parts.push("Комментарий: "+p.comment);
+      if(p.phone)parts.push("СБП: "+p.phone+(p.bank?" · "+p.bank:"")+(p.recipient?" · "+p.recipient:""));
+      if(p.card_number)parts.push("Карта: "+p.card_number+(p.recipient?" · "+p.recipient:""));
+      if(p.wallet)parts.push("Кошелёк: "+p.wallet);
+      if(p.cryptobot_url)parts.push("CryptoBot: "+p.cryptobot_url);
+      if(p.payment_reported)parts.push("Игрок сообщил об оплате");
+      return parts.join(" · ")||t.details||"—";
+    }
+    function renderAdminSettings(){
+      var s=state.settings;
+      return '<div class="panel"><h2>Платёжные реквизиты</h2><div class="grid2"><div class="field"><label>Номер телефона для СБП</label><input id="setting-sbp-phone" value="'+esc(s.sbp_phone||s.sbp_requisite||"")+'" placeholder="+7 (999) 123-45-67"></div><div class="field"><label>Банк получателя (СБП)</label><input id="setting-sbp-bank" value="'+esc(s.sbp_bank||"")+'" placeholder="Т-Банк / Сбербанк"></div><div class="field"><label>Имя получателя (СБП)</label><input id="setting-sbp-recipient" value="'+esc(s.sbp_recipient||"")+'" placeholder="Иван И."></div><div class="field"><label>Номер карты (16 цифр)</label><input id="setting-card-number" inputmode="numeric" maxlength="19" value="'+esc(s.card_number||s.card_requisite||"")+'" placeholder="0000 0000 0000 0000"></div><div class="field"><label>Получатель карты</label><input id="setting-card-recipient" value="'+esc(s.card_recipient||"")+'" placeholder="Иван И."></div><div class="field"><label>Адрес кошелька USDT (TRC-20 / TON)</label><input id="setting-usdt-wallet" value="'+esc(s.usdt_trc20||s.usdt_requisite||"")+'" placeholder="Адрес криптокошелька"></div><div class="field"><label>Ссылка на CryptoBot / Telegram-оплату</label><input id="setting-cryptobot-url" type="url" value="'+esc(s.cryptobot_url||"")+'" placeholder="https://t.me/..."></div></div><div class="methods"><label class="inline-check"><input id="setting-enable-sbp" type="checkbox" '+(s.enable_sbp!==false?"checked":"")+'> СБП включён</label><label class="inline-check"><input id="setting-enable-card" type="checkbox" '+(s.enable_card!==false?"checked":"")+'> Карта включена</label><label class="inline-check"><input id="setting-enable-usdt" type="checkbox" '+(s.enable_usdt!==false?"checked":"")+'> USDT включён</label><label class="inline-check"><input id="setting-demo" type="checkbox" '+(s.demo_deposit?"checked":"")+'> Демо-баланс включён</label></div><hr><h2>Настройки сайта</h2><div class="grid2"><div class="field"><label>Глобальный RTP: <output id="rtp-output">'+Math.round(s.rtp_multiplier*100)+'%</output></label><input id="setting-rtp" type="range" min="10" max="200" value="'+Math.round(s.rtp_multiplier*100)+'"></div><div class="field"><label>Скорость live-ленты (1–30)</label><input id="setting-speed" type="number" min="1" max="30" value="'+Number(s.live_drop_speed||5)+'"></div><div class="field"><label>Текст главного баннера</label><input id="setting-banner" maxlength="120" value="'+esc(s.banner_title||"MoneyDrop")+'"></div><div class="field"><label class="inline-check"><input type="checkbox" id="setting-streamer" '+(s.streamer_mode?"checked":"")+'> Режим стримера</label></div></div><button class="primary" data-action="admin-save-settings">Сохранить настройки</button></div><div class="panel" style="margin-top:12px"><h2>Webhook платежного шлюза</h2><p>Ключ хранится только в закрытой таблице и не загружается в браузер. Используйте случайный секрет длиной не менее 32 символов.</p><div class="field"><label>Установить / заменить секрет webhook</label><input id="webhook-secret" type="password" autocomplete="new-password" placeholder="Новый секретный ключ"></div><button class="secondary" data-action="admin-save-webhook-secret">Сохранить секрет</button></div>';
+    }
     function renderAdminBody(tab){
       var d=state.adminData||{};
       if(tab==="dashboard")return '<div class="grid2"><div class="panel"><b>Игроки</b><h2>'+((d.overview&&d.overview.users)||0)+'</h2></div><div class="panel"><b>Открыто кейсов</b><h2>'+((d.overview&&d.overview.opens)||0)+'</h2></div><div class="panel"><b>Ожидают проверки</b><h2>'+((d.overview&&d.overview.pending)||0)+'</h2></div><div class="panel"><b>Баланс игроков</b><h2>'+money((d.overview&&d.overview.balance)||0)+'</h2></div></div>';
@@ -154,22 +171,51 @@
         return '<div class="tabs">'+["pending","approved","completed","rejected","refunded","all"].map(function(f){return '<button class="'+(filter===f?"active":"")+'" data-action="tx-filter" data-filter="'+f+'">'+esc(f)+'</button>';}).join("")+'</div><div class="panel"><table class="table"><thead><tr><th>Игрок / реквизиты</th><th>Тип</th><th>Метод</th><th>Сумма</th><th>Статус</th><th>Действия</th></tr></thead><tbody>'+((d.transactions||[]).filter(function(t){return filter==="all"||t.status===filter;}).map(function(t){var actions="";
           if(t.type==="deposit"&&t.status==="pending")actions='<button class="primary" data-action="tx-approve" data-id="'+esc(t.id)+'">Подтвердить пополнение</button> <button class="secondary" data-action="tx-reject" data-id="'+esc(t.id)+'">Отклонить</button>';
           if(t.type==="withdraw"&&t.status==="pending")actions='<button class="primary" data-action="tx-complete" data-id="'+esc(t.id)+'">Выплачено</button> <button class="secondary" data-action="tx-refund" data-id="'+esc(t.id)+'">Отклонить с возвратом</button>';
-          return '<tr><td>'+esc(t.username||t.user_id)+'<br><small>'+esc(t.details||"")+'</small></td><td>'+esc(t.type)+'</td><td>'+esc(t.method)+'</td><td>'+money(t.amount)+'</td><td><span class="status '+esc(t.status)+'">'+esc(t.status)+'</span></td><td>'+actions+'</td></tr>';}).join("")||'<tr><td colspan="6">Заявок нет</td></tr>')+'</tbody></table></div>';
+          return '<tr><td>'+esc(t.email||t.username||t.user_id)+'<br><small>'+esc(t.username||"")+' · '+esc(transactionDetail(t))+'</small><br><small>Создано: '+esc(new Date(t.created_at).toLocaleString("ru-RU",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}))+'</small></td><td>'+esc(t.type)+'</td><td>'+esc(t.method)+'</td><td>'+money(t.amount)+'</td><td><span class="status '+esc(t.status)+'">'+esc(t.status)+'</span></td><td>'+actions+'</td></tr>';}).join("")||'<tr><td colspan="6">Заявок нет</td></tr>')+'</tbody></table></div>';
       }
-      if(tab==="settings")return '<div class="panel"><div class="grid2"><div class="field"><label>Номер карты РФ</label><input id="setting-card" value="'+esc(state.settings.card_requisite)+'"></div><div class="field"><label>Номер СБП / телефон</label><input id="setting-sbp" value="'+esc(state.settings.sbp_requisite)+'"></div><div class="field"><label>USDT кошелек (TRC20)</label><input id="setting-usdt" value="'+esc(state.settings.usdt_requisite)+'"></div><div class="field"><label><input type="checkbox" id="setting-demo" '+(state.settings.demo_deposit?"checked":"")+' style="width:auto"> Демо-пополнение</label></div><div class="field"><label>Глобальный RTP: <output id="rtp-output">'+Math.round(state.settings.rtp_multiplier*100)+'%</output></label><input id="setting-rtp" type="range" min="10" max="200" value="'+Math.round(state.settings.rtp_multiplier*100)+'"></div><div class="field"><label>Скорость live-ленты (1–30)</label><input id="setting-speed" type="number" min="1" max="30" value="'+Number(state.settings.live_drop_speed||5)+'"></div><div class="field"><label>Текст главного баннера</label><input id="setting-banner" maxlength="120" value="'+esc(state.settings.banner_title||"MoneyDrop")+'"></div><div class="field"><label><input type="checkbox" id="setting-streamer" '+(state.settings.streamer_mode?"checked":"")+' style="width:auto"> Режим стримера (админу — топ-приз)</label></div></div><button class="primary" data-action="admin-save-settings">Сохранить настройки</button></div>';
+      if(tab==="settings")return renderAdminSettings();
       if(tab==="promos")return '<div class="panel"><div class="grid2"><div class="field"><label>Код</label><input id="promo-code" value="WELCOME"></div><div class="field"><label>Бонус ₽</label><input id="promo-reward" type="number" value="500"></div><div class="field"><label>Активаций</label><input id="promo-limit" type="number" value="100"></div></div><button class="secondary" data-action="admin-generate-promo">Сгенерировать код</button> <button class="primary" data-action="admin-save-promo">Создать промокод</button></div>';
       if(tab==="cases")return state.adminCase?renderCaseEditor():'<div class="section-title"><h2>Конструктор кейсов</h2><button class="primary" data-action="admin-new-case">+ Новый кейс</button></div><div class="case-grid">'+((d.cases||[]).map(function(c){return '<div class="case-card '+esc(c.theme||"lime")+'"><div class="case-art">'+caseVisual(c)+'</div><div class="case-info"><b>'+esc(c.name)+'</b><small>'+esc(c.category)+' · '+esc(c.badge||"")+'</small><span class="case-bottom"><span class="case-price">'+money(c.price)+'</span><span class="case-go">'+(c.active?"ACTIVE":"OFF")+'</span></span><button class="secondary" data-action="admin-edit-case" data-id="'+esc(c.id)+'">Редактировать</button> <button class="secondary danger-button" data-action="admin-delete-case" data-id="'+esc(c.id)+'">Удалить</button></div></div>';}).join("")||'<div class="panel">Кейсов пока нет.</div>')+'</div>';
       if(tab==="items")return '<div class="panel"><div class="inventory">'+((d.items||ITEMS).map(function(i){return '<div class="inventory-card">'+moneyArt(i)+'<b>'+esc(i.name)+'</b><span>'+money(i.value||i.price)+'</span></div>';}).join(""))+'</div></div>';
       return '<div class="panel">Раздел не найден.</div>';
     }
+    function paymentLine(label,value){
+      if(!value)return "";
+      return '<div class="payment-line"><div><small>'+esc(label)+'</small><b>'+esc(value)+'</b></div><button class="secondary" data-action="copy-payment" data-copy="'+esc(value)+'">Скопировать</button></div>';
+    }
+    function paymentTimeLeft(){
+      var expires=state.cashRequest&&state.cashRequest.expires_at;
+      return expires?Math.max(0,Math.floor((new Date(expires).getTime()-Date.now())/1000)):0;
+    }
+    function paymentTimeLabel(){
+      var left=paymentTimeLeft();
+      return String(Math.floor(left/60)).padStart(2,"0")+":"+String(left%60).padStart(2,"0");
+    }
     function cashModal(){
       var isWithdraw=state.cashTab==="withdraw";
       if(state.cashStep==="payment"){
-        var requisites={sbp:state.settings.sbp_requisite||"Реквизиты СБП укажет администратор",card:state.settings.card_requisite||"Реквизиты карты укажет администратор",usdt:state.settings.usdt_requisite||"USDT кошелек укажет администратор"};
-        return '<div class="modal"><button class="modal-x" data-action="modal-close">×</button><h2>Реквизиты для оплаты</h2><p>'+esc(requisites[state.method])+'</p><div class="panel"><b>К оплате: '+money(state.amount)+'</b></div><div class="modal-actions"><button class="secondary" data-action="cash-back">Назад</button><button class="primary" data-action="cash-paid">Я оплатил</button></div></div>';
+        var request=state.cashRequest||{},info=request.payment_data||{},method=state.method;
+        var fields="";
+        if(method==="sbp")fields=paymentLine("Телефон СБП",info.phone)+paymentLine("Банк получателя",info.bank)+paymentLine("Имя получателя",info.recipient);
+        else if(method==="card")fields=paymentLine("Номер карты",info.card_number)+paymentLine("Получатель",info.recipient);
+        else if(method==="usdt")fields=paymentLine("Адрес кошелька",info.wallet)+paymentLine("Сеть",info.network||"TRC-20 / TON")+paymentLine("Ссылка CryptoBot",info.cryptobot_url);
+        fields+=paymentLine(method==="usdt"?"Сумма заявки в рублях":"Точная сумма перевода",money(state.amount))+paymentLine("Комментарий к переводу",info.comment);
+        var cryptoLink=method==="usdt"&&/^https:\/\//i.test(info.cryptobot_url||"")?'<a class="primary crypto-link" href="'+esc(info.cryptobot_url)+'" target="_blank" rel="noopener noreferrer">Открыть CryptoBot</a>':"";
+        return '<div class="modal payment-modal"><button class="modal-x" data-action="cash-cancel">×</button><span class="tag">ОПЛАТА ЗАЯВКИ</span><h2>Оплата заявки #'+esc(String(request.id||"").slice(0,8))+'</h2><p>Переведите указанную сумму в течение 15 минут. Не меняйте уникальный комментарий платежа.</p><div class="payment-timer">Заявка действует: <b id="payment-countdown">'+paymentTimeLabel()+'</b></div><div class="payment-fields">'+fields+'</div>'+cryptoLink+'<div class="modal-actions"><button class="secondary" data-action="cash-cancel">Отменить</button><button class="primary" data-action="cash-paid" '+(paymentTimeLeft()<=0?"disabled":"")+'>Я перевел деньги</button></div></div>';
       }
-      if(isWithdraw)return '<div class="modal"><button class="modal-x" data-action="modal-close">×</button><h2>Вывод средств</h2><p>Минимальная сумма — 500 ₽. Средства списываются сразу, заявка проверяется администратором.</p><div class="methods"><button class="method '+(state.withdrawMethod==="sbp"?"active":"")+'" data-action="withdraw-method" data-method="sbp"><b>СБП</b><span>По телефону</span></button><button class="method '+(state.withdrawMethod==="card"?"active":"")+'" data-action="withdraw-method" data-method="card"><b>Карта РФ</b><span>Номер карты</span></button><button class="method '+(state.withdrawMethod==="usdt"?"active":"")+'" data-action="withdraw-method" data-method="usdt"><b>USDT</b><span>TRC20 кошелек</span></button></div><div class="field" style="margin-top12px"><label>Реквизиты</label><input id="withdraw-address" value="'+esc(state.withdrawAddress)+'" placeholder="Введите номер или адрес"></div><div class="field"><label>Сумма</label><input id="withdraw-amount" type="number" min="500" value="'+state.withdrawAmount+'"></div><div class="modal-actions"><button class="secondary" data-action="modal-close">Отмена</button><button class="primary" data-action="withdraw-create">Создать заявку</button></div></div>';
-      return '<div class="modal"><button class="modal-x" data-action="modal-close">×</button><h2>Касса MoneyDrop</h2><p>Пополнение без данных карты на устройстве. Окончательное зачисление после подтверждения администратором.</p><div class="tabs"><button class="active" data-action="cash-tab" data-tab="deposit">Пополнить</button><button data-action="cash-tab" data-tab="withdraw">Вывести</button></div><div class="methods"><button class="method '+(state.method==="sbp"?"active":"")+'" data-action="pay-method" data-method="sbp"><b>СБП</b><span>Быстрый платеж</span></button><button class="method '+(state.method==="card"?"active":"")+'" data-action="pay-method" data-method="card"><b>Карта РФ</b><span>Банковская карта</span></button><button class="method '+(state.method==="usdt"?"active":"")+'" data-action="pay-method" data-method="usdt"><b>USDT</b><span>Криптовалюта</span></button>'+ (state.settings.demo_deposit?'<button class="method '+(state.method==="demo"?"active":"")+'" data-action="pay-method" data-method="demo"><b>Демо</b><span>Тестовое пополнение</span></button>':'')+'</div><div class="amounts">'+[100,500,1000,5000].map(function(a){return '<button class="'+(state.amount===a?"active":"")+'" data-action="amount" data-amount="'+a+'">'+money(a)+'</button>';}).join("")+'</div><div class="grid2"><div class="field"><label>Своя сумма</label><input id="cash-custom" type="number" min="100" value="'+state.amount+'"></div><div class="field"><label>Промокод</label><input id="cash-promo" value="'+esc(state.promo)+'" placeholder="WELCOME"></div></div><div class="modal-actions"><button class="secondary" data-action="modal-close">Отмена</button><button class="primary" data-action="cash-pay">'+(state.method==="demo"?"Создать демо-заявку":"Перейти к оплате")+'</button></div></div>';
+      if(isWithdraw)return '<div class="modal"><button class="modal-x" data-action="modal-close">×</button><h2>Вывод средств</h2><p>Минимальная сумма — 500 ₽. Средства списываются сразу, заявка проверяется администратором.</p><div class="methods"><button class="method '+(state.withdrawMethod==="sbp"?"active":"")+'" data-action="withdraw-method" data-method="sbp"><b>СБП</b><span>По телефону</span></button><button class="method '+(state.withdrawMethod==="card"?"active":"")+'" data-action="withdraw-method" data-method="card"><b>Карта РФ</b><span>Номер карты</span></button><button class="method '+(state.withdrawMethod==="usdt"?"active":"")+'" data-action="withdraw-method" data-method="usdt"><b>USDT</b><span>TRC20 кошелек</span></button></div><div class="field" style="margin-top:12px"><label>Реквизиты</label><input id="withdraw-address" value="'+esc(state.withdrawAddress)+'" placeholder="Введите номер или адрес"></div><div class="field"><label>Сумма</label><input id="withdraw-amount" type="number" min="500" value="'+state.withdrawAmount+'"></div><div class="modal-actions"><button class="secondary" data-action="modal-close">Отмена</button><button class="primary" data-action="withdraw-create">Создать заявку</button></div></div>';
+      var availableMethods=[];
+      if(state.settings.enable_sbp!==false)availableMethods.push("sbp");
+      if(state.settings.enable_card!==false)availableMethods.push("card");
+      if(state.settings.enable_usdt!==false)availableMethods.push("usdt");
+      if(state.settings.demo_deposit)availableMethods.push("demo");
+      if(availableMethods.indexOf(state.method)<0)state.method=availableMethods[0]||"sbp";
+      var methods=[];
+      if(state.settings.enable_sbp!==false)methods.push('<button class="method '+(state.method==="sbp"?"active":"")+'" data-action="pay-method" data-method="sbp"><b>СБП</b><span>Быстрый платеж</span></button>');
+      if(state.settings.enable_card!==false)methods.push('<button class="method '+(state.method==="card"?"active":"")+'" data-action="pay-method" data-method="card"><b>Карта РФ</b><span>Банковская карта</span></button>');
+      if(state.settings.enable_usdt!==false)methods.push('<button class="method '+(state.method==="usdt"?"active":"")+'" data-action="pay-method" data-method="usdt"><b>USDT</b><span>TRC-20 / TON</span></button>');
+      if(state.settings.demo_deposit)methods.push('<button class="method '+(state.method==="demo"?"active":"")+'" data-action="pay-method" data-method="demo"><b>Демо</b><span>Тестовый баланс</span></button>');
+      return '<div class="modal"><button class="modal-x" data-action="modal-close">×</button><h2>Касса MoneyDrop</h2><p>Реальные пополнения зачисляются после проверки платежа; демо-сумма — сразу.</p><div class="tabs"><button class="active" data-action="cash-tab" data-tab="deposit">Пополнить</button><button data-action="cash-tab" data-tab="withdraw">Вывести</button></div><div class="methods">'+(methods.join("")||'<p>Сейчас способы оплаты отключены.</p>')+'</div><div class="amounts">'+[100,500,1000,5000].map(function(a){return '<button class="'+(state.amount===a?"active":"")+'" data-action="amount" data-amount="'+a+'">'+money(a)+'</button>';}).join("")+'</div><div class="grid2"><div class="field"><label>Своя сумма, ₽</label><input id="cash-custom" type="number" min="100" value="'+state.amount+'"></div><div class="field"><label>Промокод</label><input id="cash-promo" value="'+esc(state.promo)+'" placeholder="WELCOME"></div></div><div class="modal-actions"><button class="secondary" data-action="modal-close">Отмена</button><button class="primary" data-action="cash-pay" '+(!methods.length?"disabled":"")+'>'+(state.method==="demo"?"Зачислить демо-баланс":"Перейти к оплате")+'</button></div></div>';
     }
     function winModal(){
       var wins=state.winnings||[];
@@ -210,9 +256,22 @@
     async function loadAdmin(){
       if(!isAdmin())return;
       var d={};
-      try{d.overview=await rpc("admin_overview");d.users=await rpc("admin_list_users");d.transactions=await rpc("admin_list_transactions",{p_filter:"all"});d.cases=await rpc("admin_list_cases");}catch(e){console.error(e);state.toast=e.message||"Не удалось загрузить данные админ-панели";}
+      try{
+        d.overview=await rpc("admin_overview");
+        d.users=await rpc("admin_list_users");
+        d.transactions=await rpc("admin_list_transactions",{p_filter:"all"});
+        d.cases=await rpc("admin_list_cases");
+        var pending=(d.transactions||[]).filter(function(t){return t.status==="pending";}).map(function(t){return t.id;});
+        if(state.pendingTransactionsSeen!==null&&pending.some(function(id){return state.pendingTransactionsSeen.indexOf(id)<0;}))notifyNewPending();
+        state.pendingTransactionsSeen=pending;
+      }catch(e){console.error(e);state.toast=e.message||"Не удалось загрузить данные админ-панели";}
       d.items=ITEMS;state.adminData=d;
       render();
+      if(state.page==="admin"&&state.adminTab==="transactions"&&!state.txPollTimer){
+        state.txPollTimer=setInterval(function(){if(state.page==="admin"&&state.adminTab==="transactions"&&isAdmin())loadAdmin();},15000);
+      }else if((state.page!=="admin"||state.adminTab!=="transactions")&&state.txPollTimer){
+        clearInterval(state.txPollTimer);state.txPollTimer=null;
+      }
     }
     function collectCaseEditor(){
       if(!state.adminCase)return;
@@ -323,19 +382,76 @@
         try{await refreshProfile();render();}catch(refreshError){console.error(refreshError);}
       }catch(e){toast(e.message||"Не удалось продать призы");}
     }
+    function updatePaymentCountdown(){
+      var left=paymentTimeLeft(),countdown=document.getElementById("payment-countdown"),button=document.querySelector('[data-action="cash-paid"]');
+      if(countdown)countdown.textContent=left>0?paymentTimeLabel():"00:00 · срок истёк";
+      if(button)button.disabled=left<=0;
+      if(left<=0&&state.paymentTimer){clearInterval(state.paymentTimer);state.paymentTimer=null;}
+    }
+    function startPaymentTimer(){
+      if(state.paymentTimer)clearInterval(state.paymentTimer);
+      updatePaymentCountdown();
+      state.paymentTimer=setInterval(updatePaymentCountdown,1000);
+    }
+    function stopPaymentTimer(){
+      if(state.paymentTimer)clearInterval(state.paymentTimer);
+      state.paymentTimer=null;
+    }
+    async function cancelDepositRequest(){
+      var request=state.cashRequest;
+      try{
+        if(request&&request.id)await rpc("cancel_deposit_request",{p_transaction_id:request.id});
+        stopPaymentTimer();state.cashRequest=null;state.cashStep="method";state.modal=null;render();
+        toast("Заявка на оплату отменена");
+      }catch(e){toast(e.message||"Не удалось отменить заявку");}
+    }
+    async function copyPaymentValue(value){
+      try{
+        var copied=false;
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+          try{await navigator.clipboard.writeText(value);copied=true;}catch(clipboardError){}
+        }
+        if(!copied){
+          var input=document.createElement("textarea");input.value=value;input.style.position="fixed";input.style.opacity="0";document.body.appendChild(input);input.select();
+          copied=document.execCommand("copy");document.body.removeChild(input);if(!copied)throw new Error("Браузер не разрешил копирование");
+        }
+        toast("Скопировано");
+      }catch(e){toast(e.message||"Не удалось скопировать значение");}
+    }
     async function createDeposit(){
       if(!state.user){state.modal="auth";state.authMode="login";render();return;}
-      var custom=Number(document.getElementById("cash-custom")&&document.getElementById("cash-custom").value||state.amount);
-      state.amount=Math.max(100,custom);state.promo=document.getElementById("cash-promo")&&document.getElementById("cash-promo").value||state.promo;
-      if(state.method==="demo"){
-        try{var dr=await rpc("create_deposit",{p_amount:state.amount,p_method:"demo",p_promo_code:state.promo});state.modal=null;render();toast("Демо-заявка создана: "+dr.status);}catch(e){toast(e.message);}
-        return;
+      if(state.paymentCreating)return;
+      var amountInput=document.getElementById("cash-custom"),promoInput=document.getElementById("cash-promo");
+      var amount=Number(amountInput?amountInput.value.trim():state.amount);
+      if(!Number.isSafeInteger(amount)||amount<100)return toast("Введите целую сумму не менее 100 ₽");
+      state.amount=amount;state.promo=promoInput?promoInput.value.trim():state.promo;
+      state.paymentCreating=true;
+      try{
+        var r=await rpc("create_deposit",{p_amount:state.amount,p_method:state.method,p_promo_code:state.promo});
+        if(state.method==="demo"){
+          var credited=Number(r.credited||Number(r.amount)+Number(r.bonus||0));
+          state.cashRequest=null;state.modal=null;render();
+          try{await refreshProfile();render();}
+          catch(profileError){console.error(profileError);toast("Демо-зачисление выполнено, но баланс не обновился. Перезагрузите страницу.");return;}
+          toast("Демо-баланс зачислен: +"+money(credited));
+          return;
+        }
+        state.cashRequest={id:r.id,expires_at:r.expires_at,payment_data:r.payment_data||{}};
+        state.cashStep="payment";state.modal="cash";render();startPaymentTimer();
+      }catch(e){toast(e.message||"Не удалось создать заявку на оплату");}
+      finally{
+        state.paymentCreating=false;
+        var payButton=document.querySelector('[data-action="cash-pay"]');
+        if(payButton)payButton.disabled=false;
       }
-      state.cashStep="payment";render();
     }
     async function paidDeposit(){
-      try{var r=await rpc("create_deposit",{p_amount:state.amount,p_method:state.method,p_promo_code:state.promo});state.modal=null;state.cashStep="method";render();toast("Заявка создана, статус: "+r.status);}
-      catch(e){toast(e.message||"Не удалось создать заявку");}
+      if(!state.cashRequest||paymentTimeLeft()<=0)return toast("Время оплаты заявки истекло");
+      try{
+        await rpc("confirm_deposit_payment",{p_transaction_id:state.cashRequest.id});
+        stopPaymentTimer();state.cashRequest=null;state.modal=null;state.cashStep="method";render();toast("Отметка об оплате отправлена админу. Зачисление после проверки.");
+      }
+      catch(e){toast(e.message||"Не удалось подтвердить оплату");}
     }
     async function createWithdraw(){
       var address=document.getElementById("withdraw-address"),amount=document.getElementById("withdraw-amount");
@@ -375,6 +491,12 @@
 
     function audioCtx(){if(!state.audio){var C=window.AudioContext||window.webkitAudioContext;if(C)state.audio=new C();}return state.audio;}
     function tone(freq,dur){if(!state.sound)return;try{var c=audioCtx();if(!c)return;var o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=freq;g.gain.setValueAtTime(.04,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dur);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+dur);}catch(e){}}
+    function notifyNewPending(){
+      var c=audioCtx();if(!c)return;
+      var sequence=function(){tone(880,.2);setTimeout(function(){tone(1175,.22);},180);};
+      if(c.state==="suspended")c.resume().then(sequence).catch(function(e){console.warn("Не удалось воспроизвести уведомление о платеже",e);});
+      else sequence();
+    }
     function playWin(){
       [523,659,784,1047].forEach(function(f,i){
         setTimeout(function(){tone(f,.18);},i*120);
@@ -386,9 +508,9 @@
       var a=b.dataset.action;
       if(a==="nav"){state.page=b.dataset.page;state.caseId=null;state.menu=false;if(state.page==="admin"&&!isAdmin()){state.page="cases";return toast("Недостаточно прав администратора");}if(state.page==="admin")loadAdmin();render();}
       else if(a==="menu"){state.menu=!state.menu;render();}
-      else if(a==="cash"){state.modal="cash";state.cashTab="deposit";state.cashStep="method";render();}
+      else if(a==="cash"){stopPaymentTimer();state.cashRequest=null;state.modal="cash";state.cashTab="deposit";state.cashStep="method";render();}
       else if(a==="withdraw"){if(!state.user){state.modal="auth";state.authMode="login";render();}else{state.modal="withdraw";state.cashTab="withdraw";render();}}
-      else if(a==="modal-close"){state.modal=null;state.cashStep="method";render();}
+      else if(a==="modal-close"){if(state.cashRequest)cancelDepositRequest();else{stopPaymentTimer();state.modal=null;state.cashStep="method";render();}}
       else if(a==="cash-tab"){state.cashTab=b.dataset.tab;state.modal=state.cashTab==="withdraw"?"withdraw":"cash";render();}
       else if(a==="pay-method"){state.method=b.dataset.method;render();}
       else if(a==="withdraw-method"){state.withdrawMethod=b.dataset.method;render();}
@@ -396,6 +518,8 @@
       else if(a==="cash-pay")createDeposit();
       else if(a==="cash-back"){state.cashStep="method";render();}
       else if(a==="cash-paid")paidDeposit();
+      else if(a==="cash-cancel")cancelDepositRequest();
+      else if(a==="copy-payment")copyPaymentValue(b.dataset.copy||"");
       else if(a==="withdraw-create")createWithdraw();
       else if(a==="open-case"){state.caseId=b.dataset.id;render();}
       else if(a==="back"){state.caseId=null;render();}
@@ -432,7 +556,27 @@
       else if(a==="admin-balance"){var id=b.dataset.id,input=document.querySelector('[data-balance-user="'+id+'"]');rpc("admin_set_balance",{p_user_id:id,p_balance:Number(input.value)}).then(loadAdmin).catch(function(x){toast(x.message);});}
       else if(a==="admin-ban"){var banId=b.dataset.id,shouldBan=b.dataset.banned!=="true";rpc("admin_set_ban",{p_user_id:banId,p_is_banned:shouldBan}).then(loadAdmin).catch(function(x){toast(x.message);});}
       else if(a==="admin-grant-item"){var grantId=b.dataset.id,grantSelect=document.querySelector('[data-grant-item="'+grantId+'"]');rpc("admin_grant_item",{p_user_id:grantId,p_item_id:grantSelect.value}).then(loadAdmin).then(function(){toast("Приз выдан в сейф");}).catch(function(x){toast(x.message);});}
-      else if(a==="admin-save-settings"){rpc("admin_save_settings",{p_rtp:Number(document.getElementById("setting-rtp").value)/100,p_streamer_mode:document.getElementById("setting-streamer").checked,p_banner_title:document.getElementById("setting-banner").value,p_live_drop_speed:Number(document.getElementById("setting-speed").value),p_card_requisite:document.getElementById("setting-card").value,p_sbp_requisite:document.getElementById("setting-sbp").value,p_usdt_requisite:document.getElementById("setting-usdt").value,p_demo_deposit:document.getElementById("setting-demo").checked}).then(refreshPublic).then(loadAdmin).catch(function(x){toast(x.message);});}
+      else if(a==="admin-save-settings"){
+        function settingValue(id){var el=document.getElementById(id);return el?el.value:"";}
+        var paymentSettings={
+          sbp_phone:settingValue("setting-sbp-phone"),sbp_bank:settingValue("setting-sbp-bank"),sbp_recipient:settingValue("setting-sbp-recipient"),
+          card_number:settingValue("setting-card-number"),card_recipient:settingValue("setting-card-recipient"),
+          usdt_trc20:settingValue("setting-usdt-wallet"),cryptobot_url:settingValue("setting-cryptobot-url"),
+          enable_sbp:document.getElementById("setting-enable-sbp").checked,enable_card:document.getElementById("setting-enable-card").checked,
+          enable_usdt:document.getElementById("setting-enable-usdt").checked
+        };
+        rpc("admin_save_settings",{
+          p_rtp:Number(document.getElementById("setting-rtp").value)/100,p_streamer_mode:document.getElementById("setting-streamer").checked,
+          p_banner_title:document.getElementById("setting-banner").value,p_live_drop_speed:Number(document.getElementById("setting-speed").value),
+          p_card_requisite:paymentSettings.card_number,p_sbp_requisite:paymentSettings.sbp_phone,p_usdt_requisite:paymentSettings.usdt_trc20,
+          p_demo_deposit:document.getElementById("setting-demo").checked,p_payment:paymentSettings
+        }).then(refreshPublic).then(loadAdmin).then(function(){toast("Платежные настройки сохранены");}).catch(function(x){toast(x.message);});
+      }
+      else if(a==="admin-save-webhook-secret"){
+        var secret=document.getElementById("webhook-secret").value;
+        if(secret.length<32)return toast("Секрет должен содержать минимум 32 символа");
+        rpc("admin_set_webhook_secret",{p_secret_key:secret}).then(function(){document.getElementById("webhook-secret").value="";toast("Webhook-секрет сохранён");}).catch(function(x){toast(x.message);});
+      }
       else if(a==="admin-save-promo"){rpc("admin_save_promocode",{p_code:document.getElementById("promo-code").value,p_reward:Number(document.getElementById("promo-reward").value),p_activations:Number(document.getElementById("promo-limit").value)}).then(function(){toast("Промокод сохранен");}).catch(function(x){toast(x.message);});}
       else if(a==="admin-generate-promo"){var code="MD"+Math.random().toString(36).slice(2,8).toUpperCase();document.getElementById("promo-code").value=code;}
     });
