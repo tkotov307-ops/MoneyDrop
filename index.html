@@ -239,7 +239,7 @@
     var SUPABASE_URL="https://xdgtekgccftmvsjslcdh.supabase.co";
     var SUPABASE_ANON_KEY="sb_publishable_KH2vlcyv9pdYgEq-wb9L0g_Ge3iw751";
     var db=window.supabase&&window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    var state={page:"cases",user:null,session:null,role:"user",balance:0,inventory:[],profile:null,live:[],cases:[],items:[],moneydropSchema:false,settings:{rtp_multiplier:1,streamer_mode:false,demo_deposit:true,card_requisite:"",sbp_requisite:"",usdt_requisite:"",sbp_phone:"",sbp_bank:"",sbp_recipient:"",card_number:"",card_recipient:"",usdt_trc20:"",cryptobot_url:"",enable_sbp:true,enable_card:true,enable_usdt:true,enable_cryptobot:true,cryptobot_enabled:false,usdt_rub_rate:95,ton_rub_rate:500,banner_title:"MoneyDrop",live_drop_speed:5},caseId:null,risk:"M",quantity:1,rolling:false,winnings:null,winningsIds:[],modal:null,authEmail:"",cashTab:"deposit",cashStep:"method",cashRequest:null,paymentTimer:null,paymentCreating:false,cryptoAsset:"USDT",cryptoPollTimer:null,cryptoChecking:false,cryptoStatus:"",method:"sbp",amount:500,promo:"",withdrawMethod:"sbp",withdrawAddress:"",withdrawAmount:500,adminTab:"dashboard",adminData:{},adminCase:null,adminCaseItems:[],pendingTransactionsSeen:null,txPollTimer:null,audio:null,sound:true,toast:""};
+    var state={page:"cases",user:null,session:null,role:"user",balance:0,inventory:[],profile:null,live:[],cases:[],items:[],moneydropSchema:false,settings:{rtp_multiplier:1,streamer_mode:false,demo_deposit:true,card_requisite:"",sbp_requisite:"",usdt_requisite:"",sbp_phone:"",sbp_bank:"",sbp_recipient:"",card_number:"",card_recipient:"",usdt_trc20:"",cryptobot_url:"",enable_sbp:true,enable_card:true,enable_usdt:true,enable_cryptobot:true,cryptobot_enabled:false,usdt_rub_rate:95,ton_rub_rate:500,banner_title:"MoneyDrop",live_drop_speed:5},caseId:null,risk:"M",quantity:1,rolling:false,rouletteAnimation:null,winnings:null,winningsIds:[],modal:null,authEmail:"",cashTab:"deposit",cashStep:"method",cashRequest:null,paymentTimer:null,paymentCreating:false,cryptoAsset:"USDT",cryptoPollTimer:null,cryptoChecking:false,cryptoStatus:"",method:"sbp",amount:500,promo:"",withdrawMethod:"sbp",withdrawAddress:"",withdrawAmount:500,adminTab:"dashboard",adminData:{},adminCase:null,adminCaseItems:[],pendingTransactionsSeen:null,txPollTimer:null,audio:null,sound:true,toast:""};
     var root=document.getElementById("app");
 
     function money(v){return Math.round(Number(v)||0).toLocaleString("ru-RU")+" ₽";}
@@ -340,6 +340,9 @@
       if(value>=150)return "prize-rare";
       return "prize-common";
     }
+    function rouletteCard(item){
+      return '<div class="money-card '+prizeClass(item)+'">'+moneyArt(item)+'<div class="money-name">'+esc(item.name)+'</div><div class="money-value">'+money(item.value)+'</div></div>';
+    }
     function renderCases(){
       var cats=[["fast","Быстрый старт"],["bank","Банковские сейфы"],["vip","VIP / Миллионер"],["risk","Риск-кейсы"]];
       var opened=state.profile?Number(state.profile.opened)||0:"—";
@@ -352,8 +355,8 @@
     }
     function renderCase(){
       var c=getCase(state.caseId),price=c.category==="risk"?riskPrice():c.price;
-      var reel=(state.reel||[]).map(function(item){return '<div class="money-card '+prizeClass(item)+'">'+moneyArt(item)+'<div class="money-name">'+esc(item.name)+'</div><div class="money-value">'+money(item.value)+'</div></div>';}).join("");
-      if(!reel){reel=ITEMS.slice(0,9).map(function(item){return '<div class="money-card '+prizeClass(item)+'">'+moneyArt(item)+'<div class="money-name">'+esc(item.name)+'</div><div class="money-value">'+money(item.value)+'</div></div>';}).join("");}
+      var reel=(state.reel||[]).map(rouletteCard).join("");
+      if(!reel){reel=ITEMS.slice(0,9).map(rouletteCard).join("");}
       return '<main class="inner main"><button class="back" data-action="back">← Назад к кейсам</button><div class="opening-head"><div><h1>'+esc(c.name)+'</h1><p>'+esc(c.description||"Откройте кейс и выберите зачисление или сейф")+'</p></div><div class="case-opening-price"><span>Цена открытия</span><b>'+money(price)+'</b></div></div>'+ (c.category==="risk"?'<div class="risk-choice" style="margin-bottom:10px">'+["L","M","H","E"].map(function(r){return '<button class="'+(state.risk===r?"active":"")+'" data-action="risk" data-risk="'+r+'">'+r+'</button>';}).join("")+'</div>':'')+'<section class="roulette"><div class="roulette-window"><div class="pointer"></div><div class="roulette-track" id="roulette-track">'+reel+'</div></div><div class="roulette-controls"><div class="quantity">'+[1,2,3,4].map(function(n){return '<button class="'+(state.quantity===n?"active":"")+'" data-action="quantity" data-value="'+n+'">'+n+'</button>';}).join("")+'</div><button class="open-button primary" data-action="open" '+(state.rolling?"disabled":"")+'>Открыть за '+money(price*state.quantity)+'</button></div></section><section>'+renderCaseContents(c)+'</section></main>';
     }
     function renderCaseContents(c){
@@ -479,6 +482,7 @@
     }
     function footer(){return '<footer class="footer inner">MoneyDrop — виртуальный игровой баланс и ручные заявки. Рекомендуем 18+.</footer>'; }
     function render(){
+      if(state.rouletteAnimation)return;
       fillLive();
       var content=state.page==="admin"?renderAdmin():state.page==="inventory"?renderInventory():state.page==="profile"?renderProfile():state.page==="upgrade"?renderUpgrade():state.caseId?renderCase():renderCases();
       root.innerHTML='<div class="shell">'+header()+'<div class="inner livebar"><strong>LIVE DROP</strong><div class="live-list">'+state.live.slice(0,8).map(liveCard).join("")+'</div></div>'+content+footer()+(state.toast?'<div class="toast">'+esc(state.toast)+'</div>':'')+authModal()+'</div>';
@@ -581,28 +585,63 @@
         state.adminCase=null;state.adminCaseItems=[];await refreshPublic();await loadAdmin();toast("Кейс и таблица призов сохранены");
       }catch(e){toast(e.message||"Не удалось сохранить кейс");}
     }
+    function clearRouletteAnimation(){
+      var animation=state.rouletteAnimation;
+      if(!animation)return;
+      state.rouletteAnimation=null;
+      if(animation.timer!==null)clearTimeout(animation.timer);
+      if(animation.track&&animation.handler)animation.track.removeEventListener("transitionend",animation.handler);
+      if(!animation.finished){
+        animation.finished=true;
+        animation.resolve();
+      }
+    }
     function animateServerWin(index){
+      clearRouletteAnimation();
       var winnerIndex=28,reelLength=57,winner=state.winnings[index],reel=[];
       for(var i=0;i<reelLength;i++)reel.push(i===winnerIndex?winner:(ITEMS[Math.floor(Math.random()*ITEMS.length)]||winner));
-      state.reel=reel;render();
       var track=document.getElementById("roulette-track"),viewport=document.querySelector(".roulette-window");
-      var pointer=viewport&&viewport.querySelector(".pointer"),card=track&&track.children[winnerIndex];
-      if(!track||!viewport||!pointer||!card)return Promise.resolve();
-      track.style.transition="none";track.style.transform="translateX(0px)";void track.offsetWidth;
-      var cardRect=card.getBoundingClientRect(),pointerRect=pointer.getBoundingClientRect();
-      var shift=(pointerRect.left+pointerRect.width/2)-(cardRect.left+cardRect.width/2);
+      if(!track||!viewport){state.reel=reel;render();track=document.getElementById("roulette-track");viewport=document.querySelector(".roulette-window");}
+      var pointer=viewport&&viewport.querySelector(".pointer");
+      if(!track||!viewport||!pointer)return Promise.resolve();
+
+      track.style.transition="none";
+      track.style.transform="translate3d(0px, 0px, 0px)";
+      track.innerHTML="";
+      void track.offsetWidth;
+      state.reel=reel;
+      track.innerHTML=reel.map(rouletteCard).join("");
+      void track.offsetWidth;
+
+      var card=track.children[winnerIndex];
+      if(!card)return Promise.resolve();
+      function offsetLeftWithin(element,ancestor){
+        var left=0,node=element;
+        while(node&&node!==ancestor){left+=node.offsetLeft;node=node.offsetParent;}
+        return left;
+      }
+      var cardLeft=offsetLeftWithin(card,viewport),pointerLeft=offsetLeftWithin(pointer,viewport);
+      var shift=pointerLeft+pointer.offsetWidth/2-(cardLeft+card.offsetWidth/2);
       return new Promise(function(resolve){
-        var finished=false,timer;
+        var animation={track:track,timer:null,handler:null,resolve:resolve,finished:false};
         function finish(event){
           if(event&&(event.target!==track||event.propertyName!=="transform"))return;
-          if(finished)return;
-          finished=true;clearTimeout(timer);track.removeEventListener("transitionend",finish);resolve();
+          if(animation.finished)return;
+          animation.finished=true;
+          if(animation.timer!==null)clearTimeout(animation.timer);
+          track.removeEventListener("transitionend",finish);
+          if(state.rouletteAnimation===animation)state.rouletteAnimation=null;
+          resolve();
         }
+        animation.handler=finish;
+        state.rouletteAnimation=animation;
         track.addEventListener("transitionend",finish);
-        timer=setTimeout(function(){finish();},2800);
         requestAnimationFrame(function(){
-          track.style.transition="transform 2.4s cubic-bezier(.12,.75,.12,1)";
-          track.style.transform="translateX("+shift+"px)";
+          requestAnimationFrame(function(){
+            track.style.transition="transform 2.4s cubic-bezier(.12,.75,.12,1)";
+            track.style.transform="translate3d("+shift+"px, 0px, 0px)";
+            animation.timer=setTimeout(function(){finish();},2800);
+          });
         });
       });
     }
