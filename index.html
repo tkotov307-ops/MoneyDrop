@@ -21,7 +21,7 @@
     var SUPABASE_URL="https://xdgtekgccftmvsjslcdh.supabase.co";
     var SUPABASE_ANON_KEY="sb_publishable_KH2vlcyv9pdYgEq-wb9L0g_Ge3iw751";
     var db=window.supabase&&window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    var state={page:"cases",user:null,session:null,role:"user",balance:0,inventory:[],profile:null,live:[],cases:[],items:[],moneydropSchema:false,settings:{rtp_multiplier:1,streamer_mode:false,demo_deposit:true,card_requisite:"",sbp_requisite:"",usdt_requisite:""},caseId:null,risk:"M",quantity:1,rolling:false,winnings:null,winningsIds:[],modal:null,cashTab:"deposit",cashStep:"method",method:"sbp",amount:500,promo:"",withdrawMethod:"sbp",withdrawAddress:"",withdrawAmount:500,adminTab:"dashboard",adminData:{},audio:null,sound:true,toast:""};
+    var state={page:"cases",user:null,session:null,role:"user",balance:0,inventory:[],profile:null,live:[],cases:[],items:[],moneydropSchema:false,settings:{rtp_multiplier:1,streamer_mode:false,demo_deposit:true,card_requisite:"",sbp_requisite:"",usdt_requisite:""},caseId:null,risk:"M",quantity:1,rolling:false,winnings:null,winningsIds:[],modal:null,authEmail:"",cashTab:"deposit",cashStep:"method",method:"sbp",amount:500,promo:"",withdrawMethod:"sbp",withdrawAddress:"",withdrawAmount:500,adminTab:"dashboard",adminData:{},audio:null,sound:true,toast:""};
     var root=document.getElementById("app");
 
     function money(v){return Math.round(Number(v)||0).toLocaleString("ru-RU")+" ₽";}
@@ -151,7 +151,7 @@
     }
     function authModal(){
       if(!state.modal)return "";
-      if(state.modal==="auth")return '<div class="modal-bg"><div class="modal"><button class="modal-x" data-action="modal-close">×</button><h2>'+ (state.authMode==="signup"?"Регистрация":"Вход")+'</h2><form class="auth-form" data-form="auth">'+(state.authMode==="signup"?'<div class="field"><label>Никнейм</label><input name="username" minlength="2" maxlength="18" required></div>':'')+'<div class="field"><label>Email</label><input name="email" type="email" required></div><div class="field"><label>Пароль</label><input name="password" type="password" minlength="6" required></div><button class="primary" type="submit">'+(state.authMode==="signup"?"Создать аккаунт":"Войти")+'</button><button class="secondary" type="button" data-action="auth-switch">'+(state.authMode==="signup"?"Уже есть аккаунт":"Создать аккаунт")+'</button></form></div></div>';
+      if(state.modal==="auth")return '<div class="modal-bg"><div class="modal"><button class="modal-x" data-action="modal-close">×</button><h2>'+ (state.authMode==="signup"?"Регистрация":"Вход")+'</h2><form class="auth-form" data-form="auth">'+(state.authMode==="signup"?'<div class="field"><label>Никнейм</label><input name="username" minlength="2" maxlength="18" required></div>':'')+'<div class="field"><label>Email</label><input name="email" type="email" value="'+esc(state.authEmail)+'" required></div><div class="field"><label>Пароль</label><input name="password" type="password" minlength="6" required></div><button class="primary" type="submit">'+(state.authMode==="signup"?"Создать аккаунт":"Войти")+'</button><button class="secondary" type="button" data-action="auth-switch">'+(state.authMode==="signup"?"Уже есть аккаунт":"Создать аккаунт")+'</button></form></div></div>';
       if(state.modal==="cash"||state.modal==="withdraw")return '<div class="modal-bg">'+cashModal()+'</div>';
       if(state.modal==="win")return '<div class="modal-bg">'+winModal()+'</div>';
       return "";
@@ -240,12 +240,30 @@
     }
     async function authSubmit(form){
       var fd=new FormData(form),email=fd.get("email").trim().toLowerCase(),password=fd.get("password");
+      state.authEmail=email;
       try{
-        if(state.authMode==="signup"){var sr=await db.auth.signUp({email:email,password:password,options:{data:{username:fd.get("username")}}});if(sr.error)throw sr.error;}
-        else{var lr=await db.auth.signInWithPassword({email:email,password:password});if(lr.error)throw lr.error;state.session=lr.data.session;state.user=lr.data.user;}
+        var isSignup=state.authMode==="signup";
+        if(isSignup){
+          var sr=await db.auth.signUp({email:email,password:password,options:{data:{username:fd.get("username")}}});
+          if(sr.error)throw sr.error;
+          state.session=sr.data.session;state.user=sr.data.user;
+        }else{
+          var lr=await db.auth.signInWithPassword({email:email,password:password});
+          if(lr.error)throw lr.error;
+          state.session=lr.data.session;state.user=lr.data.user;
+        }
         if(!state.session&&db.auth){var gr=await db.auth.getSession();state.session=gr.data.session;state.user=state.session&&state.session.user;}
-        state.modal=null;await refreshProfile();await refreshPublic();render();toast("Аккаунт готов");
-      }catch(e){toast(e.message||"Ошибка авторизации");}
+        state.modal=null;
+        if(state.session){await refreshProfile();await refreshPublic();render();toast(isSignup?"Аккаунт создан":"Вход выполнен");}
+        else{state.user=null;render();toast("Проверьте почту и подтвердите регистрацию, затем войдите.");}
+      }catch(e){
+        var message=String(e&&e.message||"");
+        if(/already registered|user exists|email.*already/i.test(message)){
+          state.authMode="login";state.modal="auth";render();toast("Этот email уже зарегистрирован. Войдите в аккаунт.");
+        }else{
+          toast(message||"Ошибка авторизации");
+        }
+      }
     }
     async function signOut(){await db.auth.signOut();state.user=null;state.session=null;state.profile=null;state.role="user";state.balance=0;state.inventory=[];render();}
 
