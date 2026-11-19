@@ -29,7 +29,7 @@
     function rpc(name,args){if(!db)return Promise.reject(new Error("Supabase JS не загрузился"));return db.rpc(name,args||{}).then(function(r){if(r.error)throw new Error(r.error.message||"Ошибка Supabase");return r.data;});}
     function toast(v){state.toast=v;render();clearTimeout(window._toast);window._toast=setTimeout(function(){state.toast="";render();},2600);}
     function art(kind,value,klass){
-      var safe=esc(value||"$"),lower=(kind+" "+value).toLower();
+      var safe=esc(value||"$"),lower=(kind+" "+value).toLowerCase();
       var fg=/#34D399/i.test(lower)?"#34d399":"#f4d783";
       if(/card|карт/.test(lower))return '<svg class="money-svg '+(klass||"")+'" viewBox="0 0 120 86"><defs><linearGradient id="cardgrad" x2="1" y2="1"><stop stop-color="#2d5e4f"/><stop offset="1" stop-color="#0b1511"/></linearGradient></defs><rect x="8" y="10" rx="12" width="104" height="66" fill="url(#cardgrad)" stroke="#f59e0b" stroke-opacity=".8"/><circle cx="34" cy="43" r="14" fill="#f59e0b" fill-opacity=".18" stroke="#f5cb63"/><text x="34" y="49" text-anchor="middle" fill="#f5cb63" font-size="16" font-weight="900">$</text><rect x="73" y="23" width="24" height="5" rx="3" fill="#34d399"/><rect x="73" y="34" width="30" height="3" rx="2" fill="#fff" opacity=".25"/></svg>';
       if(/ingot|слит/.test(lower))return '<svg class="money-svg '+(klass||"")+'" viewBox="0 0 120 86"><defs><linearGradient id="gold" x2="1" y2="1"><stop stop-color="#fff2a6"/><stop offset=".45" stop-color="#f59e0b"/><stop offset="1" stop-color="#9a5b09"/></linearGradient></defs><path d="M18 68 31 29h58l13 39Z" fill="url(#gold)" stroke="#ffe58a"/><path d="M31 29 43 17h35l11 12Z" fill="#ffd969" stroke="#fff0a3"/><path d="M31 29h58M18 68h84" stroke="#fff" stroke-opacity=".55"/><text x="60" y="60" text-anchor="middle" fill="#fff0a3" font-size="13" font-weight="900">'+safe+'</text></svg>';
@@ -76,7 +76,7 @@
     }
     function header(){
       var deposit=state.settings.demo_deposit?'':'';
-      return '<header class="topbar"><div class="inner"><button class="brand" data-action="nav" data-page="cases"><span class="logo">$</span><span class="brand-name">Money<em>Drop</em></span></button><nav class="nav '+(state.menu?"open":"")+'" id="main-nav"><button class="'+(state.page==="cases"?"active":"")+'" data-action="nav" data-page="cases">Кейсы</button><button class="'+(state.page==="inventory"?"active":"")+'" data-action="nav" data-page="inventory">Сейф</button><button class="'+(state.page==="upgrade"?"active":"")+'" data-action="nav" data-page="upgrade">Апгрейд</button><button class="'+(state.page==="profile"?"active":"")+'" data-action="nav" data-page="profile">Личный кабинет</button>'+((state.role==="admin")?' <button data-action="nav" data-page="admin">Админка</button>':'')+'</nav><div class="actions"><button class="deposit" data-action="cash">Пополнить</button>'+deposit+'<div class="balance"><i>₽</i> '+money(state.balance)+'</div><button class="avatar" data-action="nav" data-page="profile">'+esc((state.profile&&state.profile.username||"M").charAt(0).toUpperCase())+'</button><button class="mobile-menu secondary" data-action="menu">☰</button></div></div></header>';
+      return '<header class="topbar"><div class="inner"><button class="brand" data-action="nav" data-page="cases"><span class="logo">$</span><span class="brand-name">Money<em>Drop</em></span></button><nav class="nav '+(state.menu?"open":"")+'" id="main-nav"><button class="'+(state.page==="cases"?"active":"")+'" data-action="nav" data-page="cases">Кейсы</button><button class="'+(state.page==="inventory"?"active":"")+'" data-action="nav" data-page="inventory">Сейф</button><button class="'+(state.page==="upgrade"?"active":"")+'" data-action="nav" data-page="upgrade">Апгрейд</button><button class="'+(state.page==="profile"?"active":"")+'" data-action="nav" data-page="profile">Личный кабинет</button>'+((state.role==="admin")?' <button data-action="nav" data-page="admin">Админ-панель</button>':'')+'</nav><div class="actions"><button class="deposit" data-action="cash">Пополнить</button>'+deposit+'<div class="balance"><i>₽</i> '+money(state.balance)+'</div><button class="avatar" data-action="nav" data-page="profile">'+esc((state.profile&&state.profile.username||"M").charAt(0).toUpperCase())+'</button><button class="mobile-menu secondary" data-action="menu">☰</button></div></div></header>';
     }
     function fillLive(){
       if(state.live.length)return;
@@ -166,7 +166,8 @@
     async function refreshProfile(){
       if(!state.user)return;
       var p=await rpc("get_my_profile");
-      state.profile=p;state.balance=Number(p.balance)||0;state.inventory=p.inventory||[];state.role=p.role||"user";
+      if(!p||typeof p!=="object")throw new Error("Supabase вернул пустой профиль");
+      state.profile=p;state.balance=Number(p.balance)||0;state.inventory=Array.isArray(p.inventory)?p.inventory:[];state.role=String(p.role||"user").toLowerCase();
     }
     async function refreshPublic(){
       var d=await rpc("get_public_bootstrap");
@@ -320,16 +321,29 @@
       else if(a==="admin-save-promo"){rpc("admin_save_promocode",{p_code:document.getElementById("promo-code").value,p_reward:Number(document.getElementById("promo-reward").value),p_activations:Number(document.getElementById("promo-limit").value)}).then(function(){toast("Промокод сохранен");}).catch(function(x){toast(x.message);});}
     });
     document.addEventListener("submit",function(e){if(e.target.dataset.form==="auth"){e.preventDefault();authSubmit(e.target);}});
+    window.addEventListener("focus",function(){
+      if(!state.user)return;
+      refreshProfile().then(function(){
+        render();
+        if(state.role==="admin"&&state.page==="admin")return loadAdmin();
+      }).catch(function(e){console.error(e);});
+    });
 
     async function init(){
       render();
       try{
-        var session=await db.auth.getSession();state.session=session.data.session;state.user=state.session&&state.session.user;
-        await refreshPublic();
-        await refreshProfile();
-        if(state.user&&state.role==="admin")await loadAdmin();
-      }catch(e){console.error(e);}
+        var session=await db.auth.getSession();
+        if(session.error)throw session.error;
+        state.session=session.data.session;state.user=state.session&&state.session.user;
+      }catch(e){console.error(e);state.toast="Не удалось проверить сессию: "+(e.message||"ошибка Supabase Auth");}
+      try{await refreshPublic();}
+      catch(e){console.error(e);state.moneydropSchema=false;state.toast="Не удалось загрузить каталог: "+(e.message||"ошибка Supabase");}
+      if(state.user){
+        try{await refreshProfile();}
+        catch(e){console.error(e);state.role="user";state.toast="Не удалось загрузить профиль: "+(e.message||"ошибка Supabase");}
+      }
       render();
+      if(state.role==="admin")await loadAdmin();
     }
     if(db)init();else{render();toast("Supabase JS не загрузился");}
   </script>
