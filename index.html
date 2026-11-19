@@ -388,7 +388,15 @@
       }
       state.rolling=true;render();
       try{
-        var r=await rpc("open_case",{p_case_id:String(c.id),p_quantity:Number(requestedQuantity),p_risk_level:String(state.risk||"M")});
+        var openCaseParams={p_case_id:String(c.id),p_quantity:Number(requestedQuantity),p_risk_level:String(state.risk||"M")};
+        var openCaseResponse=await db.rpc("open_case",openCaseParams);
+        if(openCaseResponse.error){
+          console.error("open_case RPC parameters:",openCaseParams);
+          console.error("open_case Supabase response:",openCaseResponse);
+          console.error("open_case Supabase response JSON:",JSON.stringify(openCaseResponse));
+          throw new Error(openCaseResponse.error.message||"Ошибка Supabase при открытии кейса");
+        }
+        var r=openCaseResponse.data;
         if(!Array.isArray(r.drops)||r.drops.length!==requestedQuantity||!Array.isArray(r.inventory_ids)||r.inventory_ids.length!==r.drops.length){
           state.rolling=false;await refreshProfile();render();
           throw new Error("Сервер вернул неполные данные выигрыша; проверьте сейф перед повторным открытием.");
