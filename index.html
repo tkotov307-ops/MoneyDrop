@@ -13,6 +13,9 @@
     @media(max-width:900px){.nav{display:none}.nav.open{display:flex;position:absolute;left:18px;right:18px;top:66px;border:1px solid var(--line);border-radius10px;background:#111916;padding8px}.nav.open button{flex:1}.mobile-menu{display:block}.topbar .inner{gap:10px}.brand{font-size0}.brand-name{display:none}.case-grid{grid-template-columns:repeat(2,1fr)}.inventory{grid-template-columns:repeat(2,1fr)}.hero-art{opacity:.45;width:55%}.hero-copy{padding:28px}.hero h1{font-size34px}.methods{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.risk{align-items:flex-start}.risk-choice{flex-wrap:wrap}.actions .avatar,.actions .balance{display:none}.mobile-only{display:inline}}
     @media(max-width:520px){.inner{padding:0 14px}.hero h1{font-size29px}.hero-art{display:none}.case-grid{grid-template-columns:1fr 1fr}.case-art{height115px}.amounts{grid-template-columns:1fr 1fr}.table{display:block;overflow-x:auto}.live-card{min-width:150px}}
     .amounts button,.tabs button,.toast{border-radius:8px}.tabs button{padding:8px 10px}.toast{border-radius:10px;padding:12px 15px}
+    .case-glyph{display:grid;place-items:center;width:92px;height:92px;border:1px solid #f5cb6355;border-radius:26px;background:linear-gradient(145deg,#244236,#101713);color:#f5cb63;font-size:42px;font-weight:900;box-shadow:0 12px 35px #0008,inset 0 0 24px #34d39917;animation:float 3s ease-in-out infinite}.case-cover{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 15px #0008)}.custom-art{object-fit:contain;border-radius:10px}.admin-editor{margin-top:14px}.admin-preview,.admin-preview-empty{display:grid;width:100%;height:155px;place-items:center;border:1px dashed #ffffff22;border-radius:10px;background:#0d1311;object-fit:contain}.admin-preview-empty .case-glyph{width:88px;height:88px}.admin-prizes{display:grid;gap:10px}.admin-prize-row{display:grid;grid-template-columns:1.2fr .65fr .65fr 1fr 1.2fr 1fr auto;align-items:end;gap:8px;border:1px solid var(--line);border-radius:10px;background:#0d1311;padding:10px}.admin-prize-row .field{margin:0}.admin-prize-row select+select{margin-top:5px}.prize-preview{width:70px;height:60px;object-fit:contain}.danger-button{color:#ff9aa1}.inline-check{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--muted);font-size:11px}.inline-check input{width:auto}.admin-editor .section-title{align-items:center}.admin-editor .section-title span{font-size:12px}.admin-editor input[type=file]{padding:7px}.toast{border-color:#34d39955}
+    @media(max-width:900px){.admin-prize-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:520px){.admin-prize-row{grid-template-columns:1fr}.admin-editor .section-title{display:block}.admin-editor .section-title span{display:block;margin-top:5px}}
   </style>
 </head>
 <body>
@@ -21,12 +24,13 @@
     var SUPABASE_URL="https://xdgtekgccftmvsjslcdh.supabase.co";
     var SUPABASE_ANON_KEY="sb_publishable_KH2vlcyv9pdYgEq-wb9L0g_Ge3iw751";
     var db=window.supabase&&window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    var state={page:"cases",user:null,session:null,role:"user",balance:0,inventory:[],profile:null,live:[],cases:[],items:[],moneydropSchema:false,settings:{rtp_multiplier:1,streamer_mode:false,demo_deposit:true,card_requisite:"",sbp_requisite:"",usdt_requisite:""},caseId:null,risk:"M",quantity:1,rolling:false,winnings:null,winningsIds:[],modal:null,authEmail:"",cashTab:"deposit",cashStep:"method",method:"sbp",amount:500,promo:"",withdrawMethod:"sbp",withdrawAddress:"",withdrawAmount:500,adminTab:"dashboard",adminData:{},audio:null,sound:true,toast:""};
+    var state={page:"cases",user:null,session:null,role:"user",balance:0,inventory:[],profile:null,live:[],cases:[],items:[],moneydropSchema:false,settings:{rtp_multiplier:1,streamer_mode:false,demo_deposit:true,card_requisite:"",sbp_requisite:"",usdt_requisite:"",banner_title:"MoneyDrop",live_drop_speed:5},caseId:null,risk:"M",quantity:1,rolling:false,winnings:null,winningsIds:[],modal:null,authEmail:"",cashTab:"deposit",cashStep:"method",method:"sbp",amount:500,promo:"",withdrawMethod:"sbp",withdrawAddress:"",withdrawAmount:500,adminTab:"dashboard",adminData:{},adminCase:null,adminCaseItems:[],audio:null,sound:true,toast:""};
     var root=document.getElementById("app");
 
     function money(v){return Math.round(Number(v)||0).toLocaleString("ru-RU")+" ₽";}
     function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
     function rpc(name,args){if(!db)return Promise.reject(new Error("Supabase JS не загрузился"));return db.rpc(name,args||{}).then(function(r){if(r.error)throw new Error(r.error.message||"Ошибка Supabase");return r.data;});}
+    function isAdmin(){return state.role==="admin"||!!(state.user&&String(state.user.email||"").toLowerCase()==="tkotov307@gmail.com");}
     function toast(v){state.toast=v;render();clearTimeout(window._toast);window._toast=setTimeout(function(){state.toast="";render();},2600);}
     function art(kind,value,klass){
       var safe=esc(value||"$"),lower=(kind+" "+value).toLowerCase();
@@ -76,20 +80,29 @@
     }
     function header(){
       var deposit=state.settings.demo_deposit?'':'';
-      return '<header class="topbar"><div class="inner"><button class="brand" data-action="nav" data-page="cases"><span class="logo">$</span><span class="brand-name">Money<em>Drop</em></span></button><nav class="nav '+(state.menu?"open":"")+'" id="main-nav"><button class="'+(state.page==="cases"?"active":"")+'" data-action="nav" data-page="cases">Кейсы</button><button class="'+(state.page==="inventory"?"active":"")+'" data-action="nav" data-page="inventory">Сейф</button><button class="'+(state.page==="upgrade"?"active":"")+'" data-action="nav" data-page="upgrade">Апгрейд</button><button class="'+(state.page==="profile"?"active":"")+'" data-action="nav" data-page="profile">Личный кабинет</button>'+((state.role==="admin")?' <button data-action="nav" data-page="admin">Админ-панель</button>':'')+'</nav><div class="actions"><button class="deposit" data-action="cash">Пополнить</button>'+deposit+'<div class="balance"><i>₽</i> '+money(state.balance)+'</div><button class="avatar" data-action="nav" data-page="profile">'+esc((state.profile&&state.profile.username||"M").charAt(0).toUpperCase())+'</button><button class="mobile-menu secondary" data-action="menu">☰</button></div></div></header>';
+      return '<header class="topbar"><div class="inner"><button class="brand" data-action="nav" data-page="cases"><span class="logo">$</span><span class="brand-name">Money<em>Drop</em></span></button><nav class="nav '+(state.menu?"open":"")+'" id="main-nav"><button class="'+(state.page==="cases"?"active":"")+'" data-action="nav" data-page="cases">Кейсы</button><button class="'+(state.page==="inventory"?"active":"")+'" data-action="nav" data-page="inventory">Сейф</button><button class="'+(state.page==="upgrade"?"active":"")+'" data-action="nav" data-page="upgrade">Апгрейд</button><button class="'+(state.page==="profile"?"active":"")+'" data-action="nav" data-page="profile">Личный кабинет</button>'+(isAdmin()?' <button data-action="nav" data-page="admin">Админ-панель</button>':'')+'</nav><div class="actions"><button class="deposit" data-action="cash">Пополнить</button>'+deposit+'<div class="balance"><i>₽</i> '+money(state.balance)+'</div><button class="avatar" data-action="nav" data-page="profile">'+esc((state.profile&&state.profile.username||"M").charAt(0).toUpperCase())+'</button><button class="mobile-menu secondary" data-action="menu">☰</button></div></div></header>';
     }
     function fillLive(){
       if(state.live.length)return;
       var names=["RichPlayer","VaultKing","MoneyMaker","LuckyRuble","EmeraldVIP"];
       for(var i=0;i<8;i++){var item=ITEMS[Math.floor(Math.random()*ITEMS.length)];state.live.push({itemId:item.id,player:names[i%names.length],caseName:CASES[i%CASES.length].name,value:item.value});}
     }
-    function moneyArt(item){return art(item.kind,item.name+" "+item.value);}
+    function moneyArt(item){
+      if(item&&item.image_url&&/^(https:\/\/|data:image\/(?:png|jpeg|gif|webp);base64,)/i.test(item.image_url))
+        return '<img class="money-svg custom-art" src="'+esc(item.image_url)+'" alt="">';
+      return art(item&&item.kind,item?item.name+" "+item.value:"$");
+    }
+    function caseVisual(item){
+      if(item&&item.image_url&&/^(https:\/\/|data:image\/(?:png|jpeg|gif|webp);base64,)/i.test(item.image_url))
+        return '<img class="case-cover" src="'+esc(item.image_url)+'" alt="">';
+      return '<span class="case-glyph">'+esc(item&&item.icon||"$")+'</span>';
+    }
     function renderCases(){
       var cats=[["fast","Быстрый старт"],["bank","Банковские сейфы"],["vip","VIP / Миллионер"],["risk","Риск-кейсы"]];
       return '<main class="inner main"><section class="hero"><div class="hero-copy"><span class="tag"><i></i> LIVE CASINO • ₽</span><h1>Открой свой <span>денежный сейф</span></h1><p>Крупные номиналы, золотые слитки и премиальные карты. Выигрыш можно зачесть на баланс или оставить в сейфе.</p><button class="primary" data-action="scroll-cases">Выбрать кейс</button></div><div class="hero-art"><div class="vault"><div class="vault-door"></div><span class="cash-coin c1">₽</span><span class="cash-coin c2">$</span></div></div></section><section id="catalog">'+cats.map(function(cat){
         var list=(state.cases.length?state.cases:CASES).filter(function(c){return c.category===cat[0];});
         if(!list.length)return "";
-        return '<div class="section-title"><h2>'+cat[1]+'</h2><span>'+list.length+' кейс'+(list.length===1?"":"а")+'</span></div>'+ (cat[0]==="risk"?'<div class="risk"><div><b>Уровень риска</b><br><small>Каждый уровень меняет стоимость и размер приза</small></div><div class="risk-choice">'+["L","M","H","E"].map(function(r){return '<button class="'+(state.risk===r?"active":"")+'" data-action="risk" data-risk="'+r+'">'+r+'</button>';}).join("")+'</div></div>':'')+'<div class="case-grid">'+list.map(function(c){var price=c.category==="risk"?riskPrice():c.price;return '<button class="case-card '+esc(c.theme||"lime")+'" data-action="open-case" data-id="'+esc(c.id)+'"><span class="case-badge">'+esc(c.badge||"КЕЙС")+'</span><span class="case-art"><span class="case-visual"><span class="briefcase"></span></span></span><span class="case-info"><b>'+esc(c.name)+'</b><small>'+esc(c.description||"Денежный кейс")+'</small><span class="case-bottom"><span class="case-price">'+money(price)+'</span><span class="case-go">›</span></span></span></button>';}).join("")+'</div>';
+        return '<div class="section-title"><h2>'+cat[1]+'</h2><span>'+list.length+' кейс'+(list.length===1?"":"а")+'</span></div>'+ (cat[0]==="risk"?'<div class="risk"><div><b>Уровень риска</b><br><small>Каждый уровень меняет стоимость и размер приза</small></div><div class="risk-choice">'+["L","M","H","E"].map(function(r){return '<button class="'+(state.risk===r?"active":"")+'" data-action="risk" data-risk="'+r+'">'+r+'</button>';}).join("")+'</div></div>':'')+'<div class="case-grid">'+list.map(function(c){var price=c.category==="risk"?riskPrice():c.price;return '<button class="case-card '+esc(c.theme||"lime")+'" data-action="open-case" data-id="'+esc(c.id)+'"><span class="case-badge">'+esc(c.badge||"КЕЙС")+'</span><span class="case-art">'+caseVisual(c)+'</span><span class="case-info"><b>'+esc(c.name)+'</b><small>'+esc(c.description||"Денежный кейс")+'</small><span class="case-bottom"><span class="case-price">'+money(price)+'</span><span class="case-go">›</span></span></span></button>';}).join("")+'</div>';
       }).join("")+'</section></main>';
     }
     function renderCase(){
@@ -104,7 +117,7 @@
     }
     function renderInventory(){
       var inv=state.inventory||[];
-      return '<main class="inner main"><div class="opening-head"><div><h1>Личный сейф</h1><p>Все выигрыши остаются защищенными в вашем аккаунте.</p></div><button class="secondary" data-action="sell-all" '+(!inv.length?"disabled":"")+'>Продать всё</button></div>'+ (inv.length?'<div class="inventory">'+inv.map(function(item){var it=getItem(item.itemId||item.id);return '<div class="inventory-card">'+moneyArt(it)+'<b>'+esc(item.name||it.name)+'</b><span>'+money(item.price||it.value)+'</span><button class="secondary" style="margin-top8px;width:100%" data-action="sell-item" data-uid="'+esc(item.uid||item.id)+'">Зачислить</button></div>';}).join(""):'<div class="panel">Сейф пуст. Откройте денежный кейс.</div>')+'</div></main>';
+      return '<main class="inner main"><div class="opening-head"><div><h1>Личный сейф</h1><p>Все выигрыши остаются защищенными в вашем аккаунте.</p></div><button class="secondary" data-action="sell-all" '+(!inv.length?"disabled":"")+'>Продать всё</button></div>'+ (inv.length?'<div class="inventory">'+inv.map(function(item){var it=getItem(item.itemId||item.id);return '<div class="inventory-card">'+moneyArt(item.image_url?item:it)+'<b>'+esc(item.name||it.name)+'</b><span>'+money(item.price||it.value)+'</span><button class="secondary" style="margin-top8px;width:100%" data-action="sell-item" data-uid="'+esc(item.uid||item.id)+'">Зачислить</button></div>';}).join(""):'<div class="panel">Сейф пуст. Откройте денежный кейс.</div>')+'</div></main>';
     }
     function renderProfile(){
       return '<main class="inner main"><div class="opening-head"><div><h1>Личный кабинет</h1><p>'+esc((state.profile&&state.profile.username)||"Игрок")+'</p></div><button class="secondary" data-action="logout" '+(!state.user?"disabled":"")+'>Выйти</button></div><div class="grid2"><div class="panel"><span>Основной баланс</span><h2>'+money(state.balance)+'</h2><button class="primary" data-action="cash">Пополнить</button><button class="secondary" data-action="withdraw">Вывести</button></div><div class="panel"><span>Статистика</span><h2>'+((state.profile&&state.profile.opened)||0)+' кейсов</h2><p>Лучший выигрыш: '+money((state.profile&&state.profile.best_drop)||0)+'</p></div></div></main>';
@@ -113,28 +126,36 @@
       return '<main class="inner main"><div class="opening-head"><div><h1>Апгрейд денежного сейфа</h1><p>Повышайте номинал предмета из инвентаря.</p></div></div><div class="panel"><p>Выберите приз в сейфе и целевой номинал. Механика доступна после открытия кейса и входа в аккаунт.</p><div class="grid2"><div><label>Предмет в сейфе</label><select id="upgrade-source"><option value="">Выберите приз</option>'+state.inventory.map(function(i){return '<option value="'+esc(i.uid||i.id)+'">'+esc(i.name||getItem(i.itemId||i.id).name)+'</option>';}).join("")+'</select></div><div><label>Цель апгрейда</label><select id="upgrade-target">'+ITEMS.slice(4).map(function(i){return '<option value="'+esc(i.id)+'">'+esc(i.name)+' — '+money(i.value)+'</option>';}).join("")+'</select></div></div><button class="primary" style="margin-top12px" data-action="upgrade">Начать апгрейд</button></div></main>';
     }
     function renderAdmin(){
-      if(state.role!=="admin")return '<main class="inner main"><div class="panel">Недостаточно прав администратора.</div></main>';
+      if(!isAdmin())return '<main class="inner main"><div class="panel">Недостаточно прав администратора.</div></main>';
       var tabs=[["dashboard","Обзор"],["cases","Кейсы"],["items","Номиналы"],["transactions","Касса и заявки"],["settings","Настройки"],["promos","Промокоды"],["users","Игроки"]];
       var tab=state.adminTab||"dashboard";
       var body=renderAdminBody(tab);
       return '<main class="inner main"><div class="opening-head"><div><h1>Админ-панель MoneyDrop</h1><p>Управление кейсами, RTP, заявками и реквизитами.</p></div></div><div class="tabs">'+tabs.map(function(t){return '<button class="'+(tab===t[0]?"active":"")+'" data-action="admin-tab" data-tab="'+t[0]+'">'+t[1]+'</button>';}).join("")+'</div>'+body+'</main>';
     }
+    function renderCaseEditor(){
+      var c=state.adminCase,items=state.adminCaseItems||[];
+      var total=items.reduce(function(sum,item){return sum+(Number(item.chance)||0);},0);
+      var expected=items.reduce(function(sum,item){return sum+(Number(item.chance)||0)*(Number(item.price)||0)/100;},0);
+      var preview=c.image_url?'<img class="admin-preview" src="'+esc(c.image_url)+'" alt="Предпросмотр кейса">':'<div class="admin-preview-empty">'+caseVisual(c)+'</div>';
+      var icons=["$","₽","▣","◆","♛","▰"];
+      return '<div class="panel admin-editor"><div class="opening-head"><div><h2>'+(c.isNew?"Новый кейс":"Редактирование кейса")+'</h2><p>Обложка принимает URL или изображение до 1 МБ.</p></div><button class="secondary" data-action="admin-case-cancel">Закрыть</button></div><div class="grid2"><div><div class="field"><label>Название</label><input id="case-name" value="'+esc(c.name)+'" maxlength="80"></div><div class="field"><label>Цена открытия, ₽</label><input id="case-price" type="number" min="1" step="1" value="'+Number(c.price||10)+'"></div><div class="field"><label>Категория</label><select id="case-category">'+[["fast","Быстрый старт"],["bank","Банковские сейфы"],["vip","VIP / Миллионер"],["risk","Риск-кейсы"]].map(function(x){return '<option value="'+x[0]+'" '+(c.category===x[0]?"selected":"")+'>'+x[1]+'</option>';}).join("")+'</select></div><div class="field"><label>Бейдж</label><input id="case-badge" value="'+esc(c.badge||"")+'" maxlength="24" placeholder="HOT, NEW, VIP, x4"></div><div class="grid2"><div class="field"><label>Неоновый цвет</label><select id="case-theme">'+[["lime","Лайм"],["green","Изумруд"],["gold","Золото"],["blue","Синий"],["red","Красный"]].map(function(x){return '<option value="'+x[0]+'" '+((c.theme||"lime")===x[0]?"selected":"")+'>'+x[1]+'</option>';}).join("")+'</select></div><div class="field"><label>Иконка</label><select id="case-icon">'+icons.map(function(icon){return '<option '+((c.icon||"$")===icon?"selected":"")+'>'+icon+'</option>';}).join("")+'</select></div></div><div class="field"><label>Описание</label><input id="case-description" value="'+esc(c.description||"")+'" maxlength="120"></div></div><div><div class="field"><label>Обложка: ссылка</label><input id="case-image" value="'+esc(c.image_url||"")+'" placeholder="https://..."></div><div class="field"><label>Или загрузить GIF / WebP / PNG / JPG (до 1 МБ)</label><input type="file" accept="image/png,image/jpeg,image/gif,image/webp" data-image-kind="case"></div>'+preview+'<label class="inline-check"><input id="case-active" type="checkbox" '+(c.active===false?"":"checked")+'> Кейс активен</label></div></div><div class="section-title"><h2>Призы и шансы</h2><span>Сумма шансов: <b class="'+(Math.abs(total-100)<.001?"green":"red")+'">'+total.toFixed(2)+'%</b> · RTP: <b>'+((Number(c.price)>0?expected/Number(c.price)*100:0).toFixed(2))+'%</b></span></div><div class="admin-prizes">'+items.map(function(item,index){return '<div class="admin-prize-row" data-index="'+index+'"><div class="field"><label>Название / номинал</label><input data-prize-field="name" value="'+esc(item.name||"")+'" placeholder="Приз 500 ₽"></div><div class="field"><label>Сумма, ₽</label><input data-prize-field="price" type="number" min="1" value="'+Number(item.price||10)+'"></div><div class="field"><label>Шанс, %</label><input data-prize-field="chance" type="number" min="0.001" max="100" step="0.001" value="'+Number(item.chance||0)+'"></div><div class="field"><label>Тип / иконка</label><select data-prize-field="kind">'+[["coin","Монета"],["cash","Купюры"],["card","Карта"],["ingot","Слиток"]].map(function(x){return '<option value="'+x[0]+'" '+((item.kind||"cash")===x[0]?"selected":"")+'>'+x[1]+'</option>';}).join("")+'</select><select data-prize-field="icon">'+icons.map(function(icon){return '<option '+((item.icon||"₽")===icon?"selected":"")+'>'+icon+'</option>';}).join("")+'</select></div><div class="field"><label>Картинка / GIF URL</label><input data-prize-field="image_url" value="'+esc(item.image_url||"")+'" placeholder="https://..."><input type="file" accept="image/png,image/jpeg,image/gif,image/webp" data-image-kind="prize" data-index="'+index+'"></div><div class="field"><label>Предпросмотр</label>'+(item.image_url?'<img class="prize-preview" src="'+esc(item.image_url)+'" alt="">':moneyArt({kind:item.kind||"cash",name:item.name||"₽",value:item.price||0,icon:item.icon}))+'</div><button class="secondary danger-button" data-action="admin-remove-prize" data-index="'+index+'">Удалить приз</button></div>';}).join("")+'</div><div class="modal-actions"><button class="secondary" data-action="admin-add-prize">Добавить приз</button><button class="secondary" data-action="admin-normalize-chances">Нормировать шансы до 100%</button><button class="primary" data-action="admin-save-case">'+(c.isNew?"Создать кейс":"Сохранить кейс")+'</button></div></div>';
+    }
     function renderAdminBody(tab){
       var d=state.adminData||{};
-      if(tab==="dashboard")return '<div class="grid2"><div class="panel"><b>Игроки</b><h2>'+((d.overview&&d.overview.users)||0)+'</h2></div><div class="panel"><b>Открыто кейсов</b><h2>'+((d.overview&&d.overview.opens)||0)+'</h2></div></div>';
-      if(tab==="users")return '<div class="panel"><table class="table"><thead><tr><th>Игрок</th><th>Баланс</th><th>Роль</th><th>Действие</th></tr></thead><tbody>'+((d.users||[]).map(function(u){return '<tr><td>'+esc(u.username)+'</td><td>'+money(u.balance)+'</td><td>'+esc(u.role)+'</td><td><input style="width:120px" value="'+u.balance+'" data-balance-user="'+esc(u.id)+'"><button class="secondary" data-action="admin-balance" data-id="'+esc(u.id)+'">Сохранить</button></td></tr>';}).join("")||'<tr><td colspan="4">Нет игроков</td></tr>')+'</tbody></table></div>';
+      if(tab==="dashboard")return '<div class="grid2"><div class="panel"><b>Игроки</b><h2>'+((d.overview&&d.overview.users)||0)+'</h2></div><div class="panel"><b>Открыто кейсов</b><h2>'+((d.overview&&d.overview.opens)||0)+'</h2></div><div class="panel"><b>Ожидают проверки</b><h2>'+((d.overview&&d.overview.pending)||0)+'</h2></div><div class="panel"><b>Баланс игроков</b><h2>'+money((d.overview&&d.overview.balance)||0)+'</h2></div></div>';
+      if(tab==="users")return '<div class="panel"><table class="table"><thead><tr><th>Игрок</th><th>Баланс</th><th>Роль</th><th>Баланс / приз</th><th>Блокировка</th></tr></thead><tbody>'+((d.users||[]).map(function(u){return '<tr><td>'+esc(u.username)+'<br><small>'+esc(u.email||"")+'</small></td><td>'+money(u.balance)+'</td><td>'+esc(u.role)+'</td><td><input style="width:110px" value="'+u.balance+'" data-balance-user="'+esc(u.id)+'"><button class="secondary" data-action="admin-balance" data-id="'+esc(u.id)+'">Баланс</button><select data-grant-item="'+esc(u.id)+'">'+ITEMS.map(function(i){return '<option value="'+esc(i.id)+'">'+esc(i.name)+'</option>';}).join("")+'</select><button class="secondary" data-action="admin-grant-item" data-id="'+esc(u.id)+'">Выдать приз</button></td><td><button class="secondary" data-action="admin-ban" data-id="'+esc(u.id)+'" data-banned="'+(u.is_banned?"true":"false")+'">'+(u.is_banned?"Разблокировать":"Заблокировать")+'</button></td></tr>';}).join("")||'<tr><td colspan="5">Нет игроков</td></tr>')+'</tbody></table></div>';
       if(tab==="transactions"){
         var filter=state.txFilter||"pending";
-        return '<div class="tabs">'+["pending","approved","completed","rejected","refunded","all"].map(function(f){return '<button class="'+(filter===f?"active":"")+'" data-action="tx-filter" data-filter="'+f+'">'+esc(f)+'</button>';}).join("")+'</div><div class="panel"><table class="table"><thead><tr><th>Игрок</th><th>Тип</th><th>Метод</th><th>Сумма</th><th>Статус</th><th>Действия</th></tr></thead><tbody>'+((d.transactions||[]).filter(function(t){return filter==="all"||t.status===filter;}).map(function(t){var actions="";
-          if(t.type==="deposit"&&t.status==="pending")actions='<button class="primary" data-action="tx-approve" data-id="'+esc(t.id)+'">Подтвердить</button> <button class="secondary" data-action="tx-reject" data-id="'+esc(t.id)+'">Отклонить</button>';
+        return '<div class="tabs">'+["pending","approved","completed","rejected","refunded","all"].map(function(f){return '<button class="'+(filter===f?"active":"")+'" data-action="tx-filter" data-filter="'+f+'">'+esc(f)+'</button>';}).join("")+'</div><div class="panel"><table class="table"><thead><tr><th>Игрок / реквизиты</th><th>Тип</th><th>Метод</th><th>Сумма</th><th>Статус</th><th>Действия</th></tr></thead><tbody>'+((d.transactions||[]).filter(function(t){return filter==="all"||t.status===filter;}).map(function(t){var actions="";
+          if(t.type==="deposit"&&t.status==="pending")actions='<button class="primary" data-action="tx-approve" data-id="'+esc(t.id)+'">Подтвердить пополнение</button> <button class="secondary" data-action="tx-reject" data-id="'+esc(t.id)+'">Отклонить</button>';
           if(t.type==="withdraw"&&t.status==="pending")actions='<button class="primary" data-action="tx-complete" data-id="'+esc(t.id)+'">Выплачено</button> <button class="secondary" data-action="tx-refund" data-id="'+esc(t.id)+'">Отклонить с возвратом</button>';
-          return '<tr><td>'+esc(t.username||t.user_id)+'</td><td>'+esc(t.type)+'</td><td>'+esc(t.method)+'</td><td>'+money(t.amount)+'</td><td><span class="status '+esc(t.status)+'">'+esc(t.status)+'</span></td><td>'+actions+'</td></tr>';}).join("")||'<tr><td colspan="6">Заявок нет</td></tr>')+'</tbody></table></div>';
+          return '<tr><td>'+esc(t.username||t.user_id)+'<br><small>'+esc(t.details||"")+'</small></td><td>'+esc(t.type)+'</td><td>'+esc(t.method)+'</td><td>'+money(t.amount)+'</td><td><span class="status '+esc(t.status)+'">'+esc(t.status)+'</span></td><td>'+actions+'</td></tr>';}).join("")||'<tr><td colspan="6">Заявок нет</td></tr>')+'</tbody></table></div>';
       }
-      if(tab==="settings")return '<div class="panel"><div class="grid2"><div class="field"><label>Номер карты РФ</label><input id="setting-card" value="'+esc(state.settings.card_requisite)+'"></div><div class="field"><label>Номер СБП / телефон</label><input id="setting-sbp" value="'+esc(state.settings.sbp_requisite)+'"></div><div class="field"><label>USDT кошелек (TRC20)</label><input id="setting-usdt" value="'+esc(state.settings.usdt_requisite)+'"></div><div class="field"><label><input type="checkbox" id="setting-demo" '+(state.settings.demo_deposit?"checked":"")+' style="width:auto"> Демо-пополнение</label></div><div class="field"><label>RTP от 10 до 200 (%)</label><input id="setting-rtp" type="number" min="10" max="200" value="'+Math.round(state.settings.rtp_multiplier*100)+'"></div><div class="field"><label>Режим стримера</label><input type="checkbox" id="setting-streamer" '+(state.settings.streamer_mode?"checked":"")+'></label></div></div><button class="primary" data-action="admin-save-settings">Сохранить настройки</button></div>';
-      if(tab==="promos")return '<div class="panel"><div class="grid2"><div class="field"><label>Код</label><input id="promo-code" value="WELCOME"></div><div class="field"><label>Бонус ₽</label><input id="promo-reward" type="number" value="500"></div><div class="field"><label>Активаций</label><input id="promo-limit" type="number" value="100"></div></div><button class="primary" data-action="admin-save-promo">Создать промокод</button></div>';
-      if(tab==="cases")return '<div class="panel"><table class="table"><thead><tr><th>Кейс</th><th>Категория</th><th>Цена</th><th>Статус</th></tr></thead><tbody>'+((d.cases||[]).map(function(c){return '<tr><td>'+esc(c.name)+'</td><td>'+esc(c.category)+'</td><td>'+money(c.price)+'</td><td>Активен</td></tr>';}).join("")||'<tr><td colspan="4">Используйте SQL seed для добавления кейсов</td></tr>')+'</tbody></table></div>';
+      if(tab==="settings")return '<div class="panel"><div class="grid2"><div class="field"><label>Номер карты РФ</label><input id="setting-card" value="'+esc(state.settings.card_requisite)+'"></div><div class="field"><label>Номер СБП / телефон</label><input id="setting-sbp" value="'+esc(state.settings.sbp_requisite)+'"></div><div class="field"><label>USDT кошелек (TRC20)</label><input id="setting-usdt" value="'+esc(state.settings.usdt_requisite)+'"></div><div class="field"><label><input type="checkbox" id="setting-demo" '+(state.settings.demo_deposit?"checked":"")+' style="width:auto"> Демо-пополнение</label></div><div class="field"><label>Глобальный RTP: <output id="rtp-output">'+Math.round(state.settings.rtp_multiplier*100)+'%</output></label><input id="setting-rtp" type="range" min="10" max="200" value="'+Math.round(state.settings.rtp_multiplier*100)+'"></div><div class="field"><label>Скорость live-ленты (1–30)</label><input id="setting-speed" type="number" min="1" max="30" value="'+Number(state.settings.live_drop_speed||5)+'"></div><div class="field"><label>Текст главного баннера</label><input id="setting-banner" maxlength="120" value="'+esc(state.settings.banner_title||"MoneyDrop")+'"></div><div class="field"><label><input type="checkbox" id="setting-streamer" '+(state.settings.streamer_mode?"checked":"")+' style="width:auto"> Режим стримера (админу — топ-приз)</label></div></div><button class="primary" data-action="admin-save-settings">Сохранить настройки</button></div>';
+      if(tab==="promos")return '<div class="panel"><div class="grid2"><div class="field"><label>Код</label><input id="promo-code" value="WELCOME"></div><div class="field"><label>Бонус ₽</label><input id="promo-reward" type="number" value="500"></div><div class="field"><label>Активаций</label><input id="promo-limit" type="number" value="100"></div></div><button class="secondary" data-action="admin-generate-promo">Сгенерировать код</button> <button class="primary" data-action="admin-save-promo">Создать промокод</button></div>';
+      if(tab==="cases")return state.adminCase?renderCaseEditor():'<div class="section-title"><h2>Конструктор кейсов</h2><button class="primary" data-action="admin-new-case">+ Новый кейс</button></div><div class="case-grid">'+((d.cases||[]).map(function(c){return '<div class="case-card '+esc(c.theme||"lime")+'"><div class="case-art">'+caseVisual(c)+'</div><div class="case-info"><b>'+esc(c.name)+'</b><small>'+esc(c.category)+' · '+esc(c.badge||"")+'</small><span class="case-bottom"><span class="case-price">'+money(c.price)+'</span><span class="case-go">'+(c.active?"ACTIVE":"OFF")+'</span></span><button class="secondary" data-action="admin-edit-case" data-id="'+esc(c.id)+'">Редактировать</button> <button class="secondary danger-button" data-action="admin-delete-case" data-id="'+esc(c.id)+'">Удалить</button></div></div>';}).join("")||'<div class="panel">Кейсов пока нет.</div>')+'</div>';
       if(tab==="items")return '<div class="panel"><div class="inventory">'+((d.items||ITEMS).map(function(i){return '<div class="inventory-card">'+moneyArt(i)+'<b>'+esc(i.name)+'</b><span>'+money(i.value||i.price)+'</span></div>';}).join(""))+'</div></div>';
-      return '<div class="panel">Раздел готов к подключению данных Supabase.</div>';
+      return '<div class="panel">Раздел не найден.</div>';
     }
     function cashModal(){
       var isWithdraw=state.cashTab==="withdraw";
@@ -168,24 +189,84 @@
       var p=await rpc("get_my_profile");
       if(!p||typeof p!=="object")throw new Error("Supabase вернул пустой профиль");
       state.profile=p;state.balance=Number(p.balance)||0;state.inventory=Array.isArray(p.inventory)?p.inventory:[];state.role=String(p.role||"user").toLowerCase();
+      if(state.user&&String(state.user.email||"").toLowerCase()==="tkotov307@gmail.com")state.role="admin";
     }
     async function refreshPublic(){
       var d=await rpc("get_public_bootstrap");
       if(d&&d.settings)state.settings=Object.assign(state.settings,d.settings);
       state.moneydropSchema=!!(d&&Array.isArray(d.items)&&Array.isArray(d.cases));
       if(state.moneydropSchema&&d.cases.length){
-        state.cases=d.cases.map(function(c){return {id:c.id,name:c.name,price:Number(c.price),category:c.category,badge:c.badge,theme:c.theme,description:c.description,items:(c.items||[]).map(function(i){return i.id;})};});
+        state.cases=d.cases.map(function(c){return {id:c.id,name:c.name,price:Number(c.price),category:c.category,badge:c.badge,theme:c.theme,icon:c.icon||"$",image_url:c.image_url||"",description:c.description,items:(c.items||[]).map(function(i){return i.id;})};});
       }else{
         state.cases=[];
       }
-      if(state.moneydropSchema&&d.items.length){ITEMS=d.items.map(function(i){return {id:i.id,name:i.name,value:Number(i.price),kind:i.kind||(/карта|card/i.test(i.name)?"card":/слит/i.test(i.name)?"ingot":/пач/i.test(i.name)?"cash":"coin"),rarity:i.rarity};});}
+      if(state.moneydropSchema&&d.items.length){ITEMS=d.items.map(function(i){return {id:i.id,name:i.name,value:Number(i.price),kind:i.kind||(/карта|card/i.test(i.name)?"card":/слит/i.test(i.name)?"ingot":/пач/i.test(i.name)?"cash":"coin"),rarity:i.rarity,icon:i.icon||"₽",image_url:i.image_url||""};});}
     }
     async function loadAdmin(){
-      if(state.role!=="admin")return;
+      if(!isAdmin())return;
       var d={};
-      try{d.overview=await rpc("admin_overview");d.users=await rpc("admin_list_users");d.transactions=await rpc("admin_list_transactions",{p_filter:"all"});}catch(e){console.error(e);}
-      d.cases=state.cases;d.items=ITEMS;state.adminData=d;
+      try{d.overview=await rpc("admin_overview");d.users=await rpc("admin_list_users");d.transactions=await rpc("admin_list_transactions",{p_filter:"all"});d.cases=await rpc("admin_list_cases");}catch(e){console.error(e);state.toast=e.message||"Не удалось загрузить данные админ-панели";}
+      d.items=ITEMS;state.adminData=d;
       render();
+    }
+    function collectCaseEditor(){
+      if(!state.adminCase)return;
+      var c=state.adminCase;
+      function value(id){var el=document.getElementById(id);return el?el.value:"";}
+      c.name=value("case-name").trim();
+      c.price=Number(value("case-price"));
+      c.category=value("case-category");
+      c.badge=value("case-badge").trim();
+      c.theme=value("case-theme");
+      c.icon=value("case-icon");
+      c.description=value("case-description").trim();
+      c.image_url=value("case-image").trim();
+      c.active=!!(document.getElementById("case-active")||{}).checked;
+      state.adminCaseItems=Array.prototype.map.call(document.querySelectorAll(".admin-prize-row"),function(row){
+        function field(name){var el=row.querySelector('[data-prize-field="'+name+'"]');return el?el.value:"";}
+        var old=state.adminCaseItems[Number(row.dataset.index)]||{};
+        return {id:old.id||"",name:field("name").trim(),price:Number(field("price")),kind:field("kind"),icon:field("icon"),rarity:old.rarity||"common",chance:Number(field("chance")),image_url:field("image_url").trim()};
+      });
+    }
+    function newAdminCase(){
+      state.adminCase={isNew:true,id:"",name:"",price:99,category:"fast",badge:"NEW",theme:"lime",icon:"$",description:"",image_url:"",active:true,sort_order:100};
+      state.adminCaseItems=[{id:"",name:"Приз 100 ₽",price:100,kind:"cash",icon:"₽",rarity:"common",chance:100,image_url:""}];
+      render();
+    }
+    function editAdminCase(id){
+      var c=(state.adminData.cases||[]).find(function(item){return item.id===id;});
+      if(!c)return toast("Кейс не найден");
+      state.adminCase=Object.assign({},c,{isNew:false});
+      state.adminCaseItems=(c.items||[]).map(function(item){return {id:item.id,name:item.name,price:Number(item.price),kind:item.kind||"cash",icon:item.icon||"₽",rarity:item.rarity||"common",chance:Number(item.chance)||0,image_url:item.image_url||""};});
+      render();
+    }
+    function normalizeChances(){
+      collectCaseEditor();
+      var list=state.adminCaseItems,total=list.reduce(function(sum,item){return sum+(Number(item.chance)||0);},0);
+      if(total<=0)return toast("Укажите хотя бы один шанс больше нуля");
+      var used=0;
+      list.forEach(function(item,index){
+        item.chance=index===list.length-1?Number((100-used).toFixed(3)):Number((item.chance/total*100).toFixed(3));
+        used+=item.chance;
+      });
+      render();
+    }
+    function validArtwork(url){
+      return !url||/^https:\/\//i.test(url)||/^data:image\/(?:png|jpeg|gif|webp);base64,/i.test(url);
+    }
+    async function saveAdminCase(){
+      collectCaseEditor();
+      var c=state.adminCase,items=state.adminCaseItems||[];
+      if(!c.name||!Number.isInteger(c.price)||c.price<1)return toast("Укажите название и цену кейса");
+      if(!items.length||items.some(function(item){return !item.name||!Number.isInteger(item.price)||item.price<1||!Number.isFinite(item.chance)||item.chance<0.001||!validArtwork(item.image_url);}))return toast("Проверьте призы, цены, шансы и ссылки на изображения");
+      var chanceTotal=items.reduce(function(sum,item){return sum+item.chance;},0);
+      if(Math.abs(chanceTotal-100)>.001)return toast("Суммарный шанс должен быть 100%. Нажмите «Нормировать шансы».");
+      if(!validArtwork(c.image_url))return toast("Обложка должна быть HTTPS-ссылкой или изображением");
+      if(!c.id)c.id="case-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,7);
+      try{
+        await rpc("admin_save_case",{p_case:{id:c.id,name:c.name,price:c.price,category:c.category,badge:c.badge,theme:c.theme,icon:c.icon,description:c.description,image_url:c.image_url,active:c.active,sort_order:c.sort_order||0},p_items:items});
+        state.adminCase=null;state.adminCaseItems=[];await refreshPublic();await loadAdmin();toast("Кейс и таблица призов сохранены");
+      }catch(e){toast(e.message||"Не удалось сохранить кейс");}
     }
     async function openCase(){
       if(!state.user){state.modal="auth";state.authMode="login";render();return toast("Войдите, чтобы открыть кейс");}
@@ -198,7 +279,7 @@
       try{
         var r=await rpc("open_case",{p_case_id:c.id,p_quantity:state.quantity,p_risk_level:state.risk});
         state.balance=Number(r.balance)||state.balance;
-        state.winnings=(r.drops||[]).map(function(d){return {id:d.id,name:d.name,value:Number(d.price),kind:d.kind||"cash",rarity:d.rarity};});
+        state.winnings=(r.drops||[]).map(function(d){return {id:d.id,name:d.name,value:Number(d.price),kind:d.kind||"cash",rarity:d.rarity,icon:d.icon||"₽",image_url:d.image_url||""};});
         state.winningsIds=r.inventory_ids||[];
         var reel=[];
         for(var i=0;i<26;i++){reel.push(ITEMS[(Math.floor(Math.random()*ITEMS.length))]);}
@@ -213,10 +294,29 @@
     async function claim(sell){
       if(!state.winnings)return;
       try{
-        if(sell)await rpc("sell_inventory",{p_inventory_ids:state.winningsIds});
+        if(sell){
+          var result=await rpc("sell_inventory",{p_inventory_ids:state.winningsIds});
+          state.balance=Number(result.balance);
+          state.inventory=(state.inventory||[]).filter(function(item){return state.winningsIds.indexOf(item.uid)<0;});
+          var amount=Number(result.amount)||0;
+          state.modal=null;state.winnings=null;state.winningsIds=[];render();
+          toast("Зачислено на баланс: +"+money(amount));
+          try{await refreshProfile();render();}catch(refreshError){console.error(refreshError);}
+          return;
+        }
         await refreshProfile();
-        state.modal=null;state.winnings=null;state.winningsIds=[];render();toast(sell?"Выигрыш зачтен на баланс":"Приз оставлен в сейфе");
+        state.modal=null;state.winnings=null;state.winningsIds=[];render();toast("Приз оставлен в сейфе");
       }catch(e){toast(e.message||"Ошибка операции");}
+    }
+    async function sellInventory(ids){
+      if(!ids.length)return;
+      try{
+        var result=await rpc("sell_inventory",{p_inventory_ids:ids});
+        state.balance=Number(result.balance);
+        state.inventory=(state.inventory||[]).filter(function(item){return ids.indexOf(item.uid)<0;});
+        render();toast("Зачислено на баланс: +"+money(result.amount));
+        try{await refreshProfile();render();}catch(refreshError){console.error(refreshError);}
+      }catch(e){toast(e.message||"Не удалось продать призы");}
     }
     async function createDeposit(){
       if(!state.user){state.modal="auth";state.authMode="login";render();return;}
@@ -279,7 +379,7 @@
     document.addEventListener("click",function(e){
       var b=e.target.closest("[data-action]");if(!b)return;
       var a=b.dataset.action;
-      if(a==="nav"){state.page=b.dataset.page;state.caseId=null;state.menu=false;if(state.page==="admin")loadAdmin();render();}
+      if(a==="nav"){state.page=b.dataset.page;state.caseId=null;state.menu=false;if(state.page==="admin"&&!isAdmin()){state.page="cases";return toast("Недостаточно прав администратора");}if(state.page==="admin")loadAdmin();render();}
       else if(a==="menu"){state.menu=!state.menu;render();}
       else if(a==="cash"){state.modal="cash";state.cashTab="deposit";state.cashStep="method";render();}
       else if(a==="withdraw"){if(!state.user){state.modal="auth";state.authMode="login";render();}else{state.modal="withdraw";state.cashTab="withdraw";render();}}
@@ -299,8 +399,8 @@
       else if(a==="open")openCase();
       else if(a==="keep")claim(false);
       else if(a==="claim")claim(true);
-      else if(a==="sell-item")rpc("sell_inventory",{p_inventory_ids:[b.dataset.uid]}).then(function(){return refreshProfile();}).then(function(){render();toast("Приз зачтен на баланс");}).catch(function(x){toast(x.message);});
-      else if(a==="sell-all"){var ids=state.inventory.map(function(i){return i.uid||i.id;});rpc("sell_inventory",{p_inventory_ids:ids}).then(function(){return refreshProfile();}).then(function(){render();toast("Сейф зачтен на баланс");}).catch(function(x){toast(x.message);});}
+      else if(a==="sell-item")sellInventory([b.dataset.uid]);
+      else if(a==="sell-all")sellInventory(state.inventory.map(function(i){return i.uid||i.id;}));
       else if(a==="scroll-cases"){document.getElementById("catalog").scrollIntoView({behavior:"smooth"});}
       else if(a==="logout")signOut();
       else if(a==="auth-open"){state.modal="auth";state.authMode=b.dataset.mode||"login";render();}
@@ -310,22 +410,52 @@
         if(!source)return toast("Выберите предмет в сейфе");
         rpc("upgrade_item",{p_inventory_id:source,p_target_skin_id:target,p_use_balance:false,p_stake:0}).then(function(r){return refreshProfile().then(function(){render();toast(r.success?"Апгрейд успешен":"Апгрейд неуспешен");});}).catch(function(x){toast(x.message);});
       }
-      else if(a==="admin-tab"){state.adminTab=b.dataset.tab;render();}
+      else if(a==="admin-tab"){state.adminTab=b.dataset.tab;if(state.adminTab==="cases"||state.adminTab==="users"||state.adminTab==="transactions")loadAdmin();render();}
+      else if(a==="admin-new-case")newAdminCase();
+      else if(a==="admin-edit-case")editAdminCase(b.dataset.id);
+      else if(a==="admin-case-cancel"){state.adminCase=null;state.adminCaseItems=[];render();}
+      else if(a==="admin-add-prize"){collectCaseEditor();state.adminCaseItems.push({id:"",name:"Новый приз",price:100,kind:"cash",icon:"₽",rarity:"common",chance:1,image_url:""});render();}
+      else if(a==="admin-remove-prize"){collectCaseEditor();state.adminCaseItems.splice(Number(b.dataset.index),1);render();}
+      else if(a==="admin-normalize-chances")normalizeChances();
+      else if(a==="admin-save-case")saveAdminCase();
+      else if(a==="admin-delete-case"){var deleteId=b.dataset.id;if(window.confirm("Удалить кейс из каталога?"))rpc("admin_delete_case",{p_case_id:deleteId}).then(function(){return refreshPublic();}).then(loadAdmin).then(function(){toast("Кейс удалён");}).catch(function(x){toast(x.message);});}
       else if(a==="tx-filter"){state.txFilter=b.dataset.filter;render();}
       else if(a==="tx-approve"){rpc("admin_approve_deposit",{p_transaction_id:b.dataset.id}).then(loadAdmin).catch(function(x){toast(x.message);});}
       else if(a==="tx-reject"){rpc("admin_reject_transaction",{p_transaction_id:b.dataset.id}).then(loadAdmin).catch(function(x){toast(x.message);});}
       else if(a==="tx-complete"){rpc("admin_complete_withdraw",{p_transaction_id:b.dataset.id}).then(loadAdmin).catch(function(x){toast(x.message);});}
       else if(a==="tx-refund"){rpc("admin_refund_withdraw",{p_transaction_id:b.dataset.id}).then(loadAdmin).catch(function(x){toast(x.message);});}
       else if(a==="admin-balance"){var id=b.dataset.id,input=document.querySelector('[data-balance-user="'+id+'"]');rpc("admin_set_balance",{p_user_id:id,p_balance:Number(input.value)}).then(loadAdmin).catch(function(x){toast(x.message);});}
-      else if(a==="admin-save-settings"){rpc("admin_save_settings",{p_rtp:Number(document.getElementById("setting-rtp").value)/100,p_streamer_mode:document.getElementById("setting-streamer").checked,p_banner_title:"MoneyDrop",p_live_drop_speed:5,p_card_requisite:document.getElementById("setting-card").value,p_sbp_requisite:document.getElementById("setting-sbp").value,p_usdt_requisite:document.getElementById("setting-usdt").value,p_demo_deposit:document.getElementById("setting-demo").checked}).then(refreshPublic).then(loadAdmin).catch(function(x){toast(x.message);});}
+      else if(a==="admin-ban"){var banId=b.dataset.id,shouldBan=b.dataset.banned!=="true";rpc("admin_set_ban",{p_user_id:banId,p_is_banned:shouldBan}).then(loadAdmin).catch(function(x){toast(x.message);});}
+      else if(a==="admin-grant-item"){var grantId=b.dataset.id,grantSelect=document.querySelector('[data-grant-item="'+grantId+'"]');rpc("admin_grant_item",{p_user_id:grantId,p_item_id:grantSelect.value}).then(loadAdmin).then(function(){toast("Приз выдан в сейф");}).catch(function(x){toast(x.message);});}
+      else if(a==="admin-save-settings"){rpc("admin_save_settings",{p_rtp:Number(document.getElementById("setting-rtp").value)/100,p_streamer_mode:document.getElementById("setting-streamer").checked,p_banner_title:document.getElementById("setting-banner").value,p_live_drop_speed:Number(document.getElementById("setting-speed").value),p_card_requisite:document.getElementById("setting-card").value,p_sbp_requisite:document.getElementById("setting-sbp").value,p_usdt_requisite:document.getElementById("setting-usdt").value,p_demo_deposit:document.getElementById("setting-demo").checked}).then(refreshPublic).then(loadAdmin).catch(function(x){toast(x.message);});}
       else if(a==="admin-save-promo"){rpc("admin_save_promocode",{p_code:document.getElementById("promo-code").value,p_reward:Number(document.getElementById("promo-reward").value),p_activations:Number(document.getElementById("promo-limit").value)}).then(function(){toast("Промокод сохранен");}).catch(function(x){toast(x.message);});}
+      else if(a==="admin-generate-promo"){var code="MD"+Math.random().toString(36).slice(2,8).toUpperCase();document.getElementById("promo-code").value=code;}
     });
     document.addEventListener("submit",function(e){if(e.target.dataset.form==="auth"){e.preventDefault();authSubmit(e.target);}});
+    document.addEventListener("change",function(e){
+      var target=e.target;
+      if(target.id==="setting-rtp"){var out=document.getElementById("rtp-output");if(out)out.value=target.value+"%";}
+      if(target.id==="case-image"||target.matches('[data-prize-field="image_url"]')){collectCaseEditor();render();return;}
+      if(target.matches('[data-image-kind]')){
+        var file=target.files&&target.files[0];if(!file)return;
+        if(!/^image\/(png|jpeg|gif|webp)$/.test(file.type)||file.size>1048576){target.value="";return toast("Поддерживаются PNG/JPG/GIF/WebP до 1 МБ");}
+        collectCaseEditor();
+        var reader=new FileReader();
+        reader.onload=function(){
+          var url=String(reader.result||"");
+          if(target.dataset.imageKind==="case")state.adminCase.image_url=url;
+          else if(state.adminCaseItems[Number(target.dataset.index)])state.adminCaseItems[Number(target.dataset.index)].image_url=url;
+          render();
+        };
+        reader.onerror=function(){toast("Не удалось прочитать файл изображения");};
+        reader.readAsDataURL(file);
+      }
+    });
     window.addEventListener("focus",function(){
       if(!state.user)return;
       refreshProfile().then(function(){
         render();
-        if(state.role==="admin"&&state.page==="admin")return loadAdmin();
+        if(isAdmin()&&state.page==="admin")return loadAdmin();
       }).catch(function(e){console.error(e);});
     });
 
@@ -343,7 +473,7 @@
         catch(e){console.error(e);state.role="user";state.toast="Не удалось загрузить профиль: "+(e.message||"ошибка Supabase");}
       }
       render();
-      if(state.role==="admin")await loadAdmin();
+      if(isAdmin())await loadAdmin();
     }
     if(db)init();else{render();toast("Supabase JS не загрузился");}
   </script>
