@@ -26,7 +26,7 @@
     var SUPABASE_URL="https://xdgtekgccftmvsjslcdh.supabase.co";
     var SUPABASE_ANON_KEY="sb_publishable_KH2vlcyv9pdYgEq-wb9L0g_Ge3iw751";
     var db=window.supabase&&window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    var state={page:"cases",user:null,session:null,role:"user",balance:0,inventory:[],profile:null,live:[],cases:[],items:[],moneydropSchema:false,settings:{rtp_multiplier:1,streamer_mode:false,demo_deposit:true,card_requisite:"",sbp_requisite:"",usdt_requisite:"",sbp_phone:"",sbp_bank:"",sbp_recipient:"",card_number:"",card_recipient:"",usdt_trc20:"",cryptobot_url:"",enable_sbp:true,enable_card:true,enable_usdt:true,banner_title:"MoneyDrop",live_drop_speed:5},caseId:null,risk:"M",quantity:1,rolling:false,winnings:null,winningsIds:[],modal:null,authEmail:"",cashTab:"deposit",cashStep:"method",cashRequest:null,paymentTimer:null,paymentCreating:false,method:"sbp",amount:500,promo:"",withdrawMethod:"sbp",withdrawAddress:"",withdrawAmount:500,adminTab:"dashboard",adminData:{},adminCase:null,adminCaseItems:[],pendingTransactionsSeen:null,txPollTimer:null,audio:null,sound:true,toast:""};
+    var state={page:"cases",user:null,session:null,role:"user",balance:0,inventory:[],profile:null,live:[],cases:[],items:[],moneydropSchema:false,settings:{rtp_multiplier:1,streamer_mode:false,demo_deposit:true,card_requisite:"",sbp_requisite:"",usdt_requisite:"",sbp_phone:"",sbp_bank:"",sbp_recipient:"",card_number:"",card_recipient:"",usdt_trc20:"",cryptobot_url:"",enable_sbp:true,enable_card:true,enable_usdt:true,enable_cryptobot:true,cryptobot_enabled:false,usdt_rub_rate:95,ton_rub_rate:500,banner_title:"MoneyDrop",live_drop_speed:5},caseId:null,risk:"M",quantity:1,rolling:false,winnings:null,winningsIds:[],modal:null,authEmail:"",cashTab:"deposit",cashStep:"method",cashRequest:null,paymentTimer:null,paymentCreating:false,cryptoAsset:"USDT",cryptoPollTimer:null,cryptoChecking:false,cryptoStatus:"",method:"sbp",amount:500,promo:"",withdrawMethod:"sbp",withdrawAddress:"",withdrawAmount:500,adminTab:"dashboard",adminData:{},adminCase:null,adminCaseItems:[],pendingTransactionsSeen:null,txPollTimer:null,audio:null,sound:true,toast:""};
     var root=document.getElementById("app");
 
     function money(v){return Math.round(Number(v)||0).toLocaleString("ru-RU")+" ₽";}
@@ -160,7 +160,10 @@
     }
     function renderAdminSettings(){
       var s=state.settings;
-      return '<div class="panel"><h2>Платёжные реквизиты</h2><div class="grid2"><div class="field"><label>Номер телефона для СБП</label><input id="setting-sbp-phone" value="'+esc(s.sbp_phone||s.sbp_requisite||"")+'" placeholder="+7 (999) 123-45-67"></div><div class="field"><label>Банк получателя (СБП)</label><input id="setting-sbp-bank" value="'+esc(s.sbp_bank||"")+'" placeholder="Т-Банк / Сбербанк"></div><div class="field"><label>Имя получателя (СБП)</label><input id="setting-sbp-recipient" value="'+esc(s.sbp_recipient||"")+'" placeholder="Иван И."></div><div class="field"><label>Номер карты (16 цифр)</label><input id="setting-card-number" inputmode="numeric" maxlength="19" value="'+esc(s.card_number||s.card_requisite||"")+'" placeholder="0000 0000 0000 0000"></div><div class="field"><label>Получатель карты</label><input id="setting-card-recipient" value="'+esc(s.card_recipient||"")+'" placeholder="Иван И."></div><div class="field"><label>Адрес кошелька USDT (TRC-20 / TON)</label><input id="setting-usdt-wallet" value="'+esc(s.usdt_trc20||s.usdt_requisite||"")+'" placeholder="Адрес криптокошелька"></div><div class="field"><label>Ссылка на CryptoBot / Telegram-оплату</label><input id="setting-cryptobot-url" type="url" value="'+esc(s.cryptobot_url||"")+'" placeholder="https://t.me/..."></div></div><div class="methods"><label class="inline-check"><input id="setting-enable-sbp" type="checkbox" '+(s.enable_sbp!==false?"checked":"")+'> СБП включён</label><label class="inline-check"><input id="setting-enable-card" type="checkbox" '+(s.enable_card!==false?"checked":"")+'> Карта включена</label><label class="inline-check"><input id="setting-enable-usdt" type="checkbox" '+(s.enable_usdt!==false?"checked":"")+'> USDT включён</label><label class="inline-check"><input id="setting-demo" type="checkbox" '+(s.demo_deposit?"checked":"")+'> Демо-баланс включён</label></div><hr><h2>Настройки сайта</h2><div class="grid2"><div class="field"><label>Глобальный RTP: <output id="rtp-output">'+Math.round(s.rtp_multiplier*100)+'%</output></label><input id="setting-rtp" type="range" min="10" max="200" value="'+Math.round(s.rtp_multiplier*100)+'"></div><div class="field"><label>Скорость live-ленты (1–30)</label><input id="setting-speed" type="number" min="1" max="30" value="'+Number(s.live_drop_speed||5)+'"></div><div class="field"><label>Текст главного баннера</label><input id="setting-banner" maxlength="120" value="'+esc(s.banner_title||"MoneyDrop")+'"></div><div class="field"><label class="inline-check"><input type="checkbox" id="setting-streamer" '+(s.streamer_mode?"checked":"")+'> Режим стримера</label></div></div><button class="primary" data-action="admin-save-settings">Сохранить настройки</button></div><div class="panel" style="margin-top:12px"><h2>Webhook платежного шлюза</h2><p>Ключ хранится только в закрытой таблице и не загружается в браузер. Используйте случайный секрет длиной не менее 32 символов.</p><div class="field"><label>Установить / заменить секрет webhook</label><input id="webhook-secret" type="password" autocomplete="new-password" placeholder="Новый секретный ключ"></div><button class="secondary" data-action="admin-save-webhook-secret">Сохранить секрет</button></div>';
+      var payments='<div class="panel"><h2>Платёжные реквизиты</h2><div class="grid2"><div class="field"><label>Номер телефона для СБП</label><input id="setting-sbp-phone" value="'+esc(s.sbp_phone||s.sbp_requisite||"")+'" placeholder="+7 (999) 123-45-67"></div><div class="field"><label>Банк получателя (СБП)</label><input id="setting-sbp-bank" value="'+esc(s.sbp_bank||"")+'" placeholder="Т-Банк / Сбербанк"></div><div class="field"><label>Имя получателя (СБП)</label><input id="setting-sbp-recipient" value="'+esc(s.sbp_recipient||"")+'" placeholder="Иван И."></div><div class="field"><label>Номер карты (16 цифр)</label><input id="setting-card-number" inputmode="numeric" maxlength="19" value="'+esc(s.card_number||s.card_requisite||"")+'" placeholder="0000 0000 0000 0000"></div><div class="field"><label>Получатель карты</label><input id="setting-card-recipient" value="'+esc(s.card_recipient||"")+'" placeholder="Иван И."></div><div class="field"><label>Адрес кошелька USDT (TRC-20 / TON)</label><input id="setting-usdt-wallet" value="'+esc(s.usdt_trc20||s.usdt_requisite||"")+'" placeholder="Адрес криптокошелька"></div><div class="field"><label>Ссылка на CryptoBot / Telegram-оплату</label><input id="setting-cryptobot-url" type="url" value="'+esc(s.cryptobot_url||"")+'" placeholder="https://t.me/..."></div></div><div class="methods"><label class="inline-check"><input id="setting-enable-sbp" type="checkbox" '+(s.enable_sbp!==false?"checked":"")+'> СБП включён</label><label class="inline-check"><input id="setting-enable-card" type="checkbox" '+(s.enable_card!==false?"checked":"")+'> Карта включена</label><label class="inline-check"><input id="setting-enable-usdt" type="checkbox" '+(s.enable_usdt!==false?"checked":"")+'> USDT включён</label><label class="inline-check"><input id="setting-demo" type="checkbox" '+(s.demo_deposit?"checked":"")+'> Демо-баланс включён</label></div><hr><h2>Настройки сайта</h2><div class="grid2"><div class="field"><label>Глобальный RTP: <output id="rtp-output">'+Math.round(s.rtp_multiplier*100)+'%</output></label><input id="setting-rtp" type="range" min="10" max="200" value="'+Math.round(s.rtp_multiplier*100)+'"></div><div class="field"><label>Скорость live-ленты (1–30)</label><input id="setting-speed" type="number" min="1" max="30" value="'+Number(s.live_drop_speed||5)+'"></div><div class="field"><label>Текст главного баннера</label><input id="setting-banner" maxlength="120" value="'+esc(s.banner_title||"MoneyDrop")+'"></div><div class="field"><label class="inline-check"><input type="checkbox" id="setting-streamer" '+(s.streamer_mode?"checked":"")+'> Режим стримера</label></div></div><button class="primary" data-action="admin-save-settings">Сохранить настройки</button></div>';
+      var crypto='<div class="panel" style="margin-top:12px"><h2>CryptoBot · Crypto Pay API</h2><p>Состояние: '+(s.cryptobot_enabled?"подключён":"токен не настроен или метод отключён")+'. Токен хранится только в базе; он не возвращается в браузер.</p><div class="field"><label>Заменить Crypto Pay API token</label><input id="setting-cryptobot-token" type="password" autocomplete="new-password" placeholder="Оставьте пустым, чтобы не менять token"></div><div class="grid2"><div class="field"><label>Курс USDT / RUB</label><input id="setting-usdt-rub-rate" type="number" min="0.01" step="0.01" value="'+Number(s.usdt_rub_rate||95)+'"></div><div class="field"><label>Курс TON / RUB</label><input id="setting-ton-rub-rate" type="number" min="0.01" step="0.01" value="'+Number(s.ton_rub_rate||500)+'"></div></div><label class="inline-check"><input id="setting-enable-cryptobot" type="checkbox" '+(s.enable_cryptobot!==false?"checked":"")+'> Принимать CryptoBot платежи</label><button class="secondary" data-action="admin-save-cryptobot">Сохранить настройки CryptoBot</button></div>';
+      var webhook='<div class="panel" style="margin-top:12px"><h2>Webhook платежного шлюза</h2><p>Ключ хранится только в закрытой таблице и не загружается в браузер. Используйте случайный секрет длиной не менее 32 символов.</p><div class="field"><label>Установить / заменить секрет webhook</label><input id="webhook-secret" type="password" autocomplete="new-password" placeholder="Новый секретный ключ"></div><button class="secondary" data-action="admin-save-webhook-secret">Сохранить секрет</button></div>';
+      return payments+crypto+webhook;
     }
     function renderAdminBody(tab){
       var d=state.adminData||{};
@@ -195,6 +198,11 @@
       var isWithdraw=state.cashTab==="withdraw";
       if(state.cashStep==="payment"){
         var request=state.cashRequest||{},info=request.payment_data||{},method=state.method;
+        if(method==="cryptobot"){
+          var payUrl=request.pay_url||"";
+          var cryptoLink=/^https:\/\//i.test(payUrl)?'<a class="primary crypto-link" href="'+esc(payUrl)+'" target="_blank" rel="noopener noreferrer">Оплатить в Telegram (@CryptoBot)</a>':"";
+          return '<div class="modal payment-modal"><button class="modal-x" data-action="crypto-hide">×</button><span class="tag">CRYPTO PAY</span><h2>CryptoBot · счёт #'+esc(String(request.invoice_id||""))+'</h2><p>Пополнение '+money(state.amount)+' будет зачислено после подтверждения счёта.</p><div class="payment-fields">'+paymentLine("К оплате",request.crypto_amount+" "+(request.asset||state.cryptoAsset))+paymentLine("Сумма пополнения",money(state.amount))+'</div>'+cryptoLink+'<p id="crypto-status">'+esc(state.cryptoStatus||"Ожидаем оплату в CryptoBot…")+'</p><div class="modal-actions"><button class="secondary" data-action="crypto-hide">Закрыть · проверка продолжится</button><button class="primary" data-action="crypto-check" data-invoice-id="'+esc(String(request.invoice_id||""))+'" '+(state.cryptoChecking?"disabled":"")+'>Я оплатил · Проверить платеж</button></div></div>';
+        }
         var fields="";
         if(method==="sbp")fields=paymentLine("Телефон СБП",info.phone)+paymentLine("Банк получателя",info.bank)+paymentLine("Имя получателя",info.recipient);
         else if(method==="card")fields=paymentLine("Номер карты",info.card_number)+paymentLine("Получатель",info.recipient);
@@ -208,14 +216,17 @@
       if(state.settings.enable_sbp!==false)availableMethods.push("sbp");
       if(state.settings.enable_card!==false)availableMethods.push("card");
       if(state.settings.enable_usdt!==false)availableMethods.push("usdt");
+      if(state.settings.cryptobot_enabled)availableMethods.push("cryptobot");
       if(state.settings.demo_deposit)availableMethods.push("demo");
       if(availableMethods.indexOf(state.method)<0)state.method=availableMethods[0]||"sbp";
       var methods=[];
       if(state.settings.enable_sbp!==false)methods.push('<button class="method '+(state.method==="sbp"?"active":"")+'" data-action="pay-method" data-method="sbp"><b>СБП</b><span>Быстрый платеж</span></button>');
       if(state.settings.enable_card!==false)methods.push('<button class="method '+(state.method==="card"?"active":"")+'" data-action="pay-method" data-method="card"><b>Карта РФ</b><span>Банковская карта</span></button>');
       if(state.settings.enable_usdt!==false)methods.push('<button class="method '+(state.method==="usdt"?"active":"")+'" data-action="pay-method" data-method="usdt"><b>USDT</b><span>TRC-20 / TON</span></button>');
+      if(state.settings.cryptobot_enabled)methods.push('<button class="method '+(state.method==="cryptobot"?"active":"")+'" data-action="pay-method" data-method="cryptobot"><b>CryptoBot</b><span>USDT / TON · автооплата</span></button>');
       if(state.settings.demo_deposit)methods.push('<button class="method '+(state.method==="demo"?"active":"")+'" data-action="pay-method" data-method="demo"><b>Демо</b><span>Тестовый баланс</span></button>');
-      return '<div class="modal"><button class="modal-x" data-action="modal-close">×</button><h2>Касса MoneyDrop</h2><p>Реальные пополнения зачисляются после проверки платежа; демо-сумма — сразу.</p><div class="tabs"><button class="active" data-action="cash-tab" data-tab="deposit">Пополнить</button><button data-action="cash-tab" data-tab="withdraw">Вывести</button></div><div class="methods">'+(methods.join("")||'<p>Сейчас способы оплаты отключены.</p>')+'</div><div class="amounts">'+[100,500,1000,5000].map(function(a){return '<button class="'+(state.amount===a?"active":"")+'" data-action="amount" data-amount="'+a+'">'+money(a)+'</button>';}).join("")+'</div><div class="grid2"><div class="field"><label>Своя сумма, ₽</label><input id="cash-custom" type="number" min="100" value="'+state.amount+'"></div><div class="field"><label>Промокод</label><input id="cash-promo" value="'+esc(state.promo)+'" placeholder="WELCOME"></div></div><div class="modal-actions"><button class="secondary" data-action="modal-close">Отмена</button><button class="primary" data-action="cash-pay" '+(!methods.length?"disabled":"")+'>'+(state.method==="demo"?"Зачислить демо-баланс":"Перейти к оплате")+'</button></div></div>';
+      var assetPicker=state.method==="cryptobot"?'<div class="field"><label>Валюта CryptoBot</label><select id="crypto-asset"><option value="USDT" '+(state.cryptoAsset==="USDT"?"selected":"")+'>USDT · '+Number(state.settings.usdt_rub_rate||95).toFixed(2)+' ₽</option><option value="TON" '+(state.cryptoAsset==="TON"?"selected":"")+'>TON · '+Number(state.settings.ton_rub_rate||500).toFixed(2)+' ₽</option></select></div>':"";
+      return '<div class="modal"><button class="modal-x" data-action="modal-close">×</button><h2>Касса MoneyDrop</h2><p>Реальные пополнения зачисляются после проверки платежа; CryptoBot проверяется автоматически, демо-сумма — сразу.</p><div class="tabs"><button class="active" data-action="cash-tab" data-tab="deposit">Пополнить</button><button data-action="cash-tab" data-tab="withdraw">Вывести</button></div><div class="methods">'+(methods.join("")||'<p>Сейчас способы оплаты отключены.</p>')+'</div>'+assetPicker+'<div class="amounts">'+[100,500,1000,5000].map(function(a){return '<button class="'+(state.amount===a?"active":"")+'" data-action="amount" data-amount="'+a+'">'+money(a)+'</button>';}).join("")+'</div><div class="grid2"><div class="field"><label>Своя сумма, ₽</label><input id="cash-custom" type="number" min="100" value="'+state.amount+'"></div><div class="field"><label>Промокод</label><input id="cash-promo" value="'+esc(state.promo)+'" placeholder="WELCOME"></div></div><div class="modal-actions"><button class="secondary" data-action="modal-close">Отмена</button><button class="primary" data-action="cash-pay" '+(!methods.length?"disabled":"")+'>'+(state.method==="demo"?"Зачислить демо-баланс":state.method==="cryptobot"?"Создать счёт CryptoBot":"Перейти к оплате")+'</button></div></div>';
     }
     function winModal(){
       var wins=state.winnings||[];
@@ -332,27 +343,64 @@
         state.adminCase=null;state.adminCaseItems=[];await refreshPublic();await loadAdmin();toast("Кейс и таблица призов сохранены");
       }catch(e){toast(e.message||"Не удалось сохранить кейс");}
     }
+    function animateServerWin(index){
+      var winnerIndex=28,reelLength=57,winner=state.winnings[index],reel=[];
+      for(var i=0;i<reelLength;i++)reel.push(i===winnerIndex?winner:(ITEMS[Math.floor(Math.random()*ITEMS.length)]||winner));
+      state.reel=reel;render();
+      var track=document.getElementById("roulette-track"),viewport=document.querySelector(".roulette-window");
+      var pointer=viewport&&viewport.querySelector(".pointer"),card=track&&track.children[winnerIndex];
+      if(!track||!viewport||!pointer||!card)return Promise.resolve();
+      track.style.transition="none";track.style.transform="translateX(0px)";void track.offsetWidth;
+      var cardRect=card.getBoundingClientRect(),pointerRect=pointer.getBoundingClientRect();
+      var shift=(pointerRect.left+pointerRect.width/2)-(cardRect.left+cardRect.width/2);
+      return new Promise(function(resolve){
+        var finished=false,timer;
+        function finish(event){
+          if(event&&(event.target!==track||event.propertyName!=="transform"))return;
+          if(finished)return;
+          finished=true;clearTimeout(timer);track.removeEventListener("transitionend",finish);resolve();
+        }
+        track.addEventListener("transitionend",finish);
+        timer=setTimeout(function(){finish();},2800);
+        requestAnimationFrame(function(){
+          track.style.transition="transform 2.4s cubic-bezier(.12,.75,.12,1)";
+          track.style.transform="translateX("+shift+"px)";
+        });
+      });
+    }
+    async function animateServerWins(){
+      for(var i=0;i<state.winnings.length;i++){
+        await animateServerWin(i);
+        if(i+1<state.winnings.length)await new Promise(function(resolve){setTimeout(resolve,180);});
+      }
+      state.rolling=false;state.modal="win";render();playWin();
+      refreshProfile().then(function(){render();}).catch(function(e){console.error("Не удалось обновить профиль после открытия кейса",e);});
+      refreshPublic().catch(function(e){console.error("Не удалось обновить ленту выигрышей",e);});
+    }
     async function openCase(){
       if(!state.user){state.modal="auth";state.authMode="login";render();return toast("Войдите, чтобы открыть кейс");}
+      if(state.rolling)return;
       if(!state.moneydropSchema)return toast("База Supabase использует старую версию. Выполните актуальный supabase.sql, чтобы включить кейсы MoneyDrop.");
       var c=getCase(state.caseId),price=c.category==="risk"?riskPrice():c.price;
-      if(Number(state.balance)<price*state.quantity){
+      var requestedQuantity=state.quantity;
+      if(Number(state.balance)<price*requestedQuantity){
         return toast("Недостаточно средств. Пополните баланс или выберите дешевый кейс.");
       }
       state.rolling=true;render();
       try{
-        var r=await rpc("open_case",{p_case_id:c.id,p_quantity:state.quantity,p_risk_level:state.risk});
-        state.balance=Number(r.balance)||state.balance;
-        state.winnings=(r.drops||[]).map(function(d){return {id:d.id,name:d.name,value:Number(d.price),kind:d.kind||"cash",rarity:d.rarity,icon:d.icon||"₽",image_url:d.image_url||""};});
-        state.winningsIds=r.inventory_ids||[];
-        var reel=[];
-        for(var i=0;i<26;i++){reel.push(ITEMS[(Math.floor(Math.random()*ITEMS.length))]);}
-        reel[13]=state.winnings[0]||ITEMS[0];state.reel=reel;
-        state.rolling=false;render();
-        var track=document.getElementById("roulette-track"),viewport=document.querySelector(".roulette-window");
-        if(track&&viewport){track.style.transition="transform 2.4s cubic-bezier(.12,.75,.12,1)";track.style.transform="translateX(-"+(Math.max(0,13*146-viewport.clientWidth/2))+"px)";}
-        playWin();
-        setTimeout(function(){state.modal="win";render();refreshProfile();refreshPublic();},2500);
+        var r=await rpc("open_case",{p_case_id:c.id,p_quantity:requestedQuantity,p_risk_level:state.risk});
+        if(!Array.isArray(r.drops)||r.drops.length!==requestedQuantity||!Array.isArray(r.inventory_ids)||r.inventory_ids.length!==r.drops.length){
+          state.rolling=false;await refreshProfile();render();
+          throw new Error("Сервер вернул неполные данные выигрыша; проверьте сейф перед повторным открытием.");
+        }
+        state.winnings=r.drops.map(function(d){return {id:d.item_id||d.id,name:d.name,value:Number(d.amount!=null?d.amount:d.price),kind:d.kind||"cash",rarity:d.rarity,icon:d.icon||"₽",image_url:d.image_url||""};});
+        if(state.winnings.some(function(item){return !item.id||!item.name||!Number.isFinite(item.value)||item.value<0;})){
+          state.rolling=false;await refreshProfile();render();
+          throw new Error("Сервер вернул некорректные данные выигрыша; проверьте сейф.");
+        }
+        state.winningsIds=r.inventory_ids;
+        if(Number.isFinite(Number(r.balance)))state.balance=Number(r.balance);
+        await animateServerWins();
       }catch(e){state.rolling=false;render();toast(e.message||"Не удалось открыть кейс");}
     }
     async function claim(sell){
@@ -397,11 +445,56 @@
       if(state.paymentTimer)clearInterval(state.paymentTimer);
       state.paymentTimer=null;
     }
+    function stopCryptoPolling(){
+      if(state.cryptoPollTimer)clearInterval(state.cryptoPollTimer);
+      state.cryptoPollTimer=null;
+    }
+    function setCryptoStatus(message){
+      state.cryptoStatus=message;
+      var label=document.getElementById("crypto-status");
+      if(label)label.textContent=message;
+    }
+    async function checkCryptoInvoice(manual){
+      if(state.cryptoChecking||!state.cashRequest||!state.cashRequest.invoice_id)return;
+      var invoiceId=String(state.cashRequest.invoice_id);
+      state.cryptoChecking=true;
+      var button=document.querySelector('[data-action="crypto-check"]');
+      if(button)button.disabled=true;
+      try{
+        var result=await rpc("md_check_cryptobot_invoice",{p_invoice_id:invoiceId});
+        if(!state.cashRequest||String(state.cashRequest.invoice_id)!==invoiceId)return;
+        if(result&&result.paid){
+          stopCryptoPolling();state.balance=Number(result.balance)||state.balance;
+          state.cashRequest=null;state.cashStep="method";state.cryptoStatus="";state.modal=null;render();
+          try{await refreshProfile();render();}catch(profileError){console.error("Не удалось обновить профиль после CryptoBot",profileError);}
+          playWin();toast("Оплата подтверждена! Баланс пополнен");
+          return;
+        }
+        if(result&&result.status==="expired"){
+          stopCryptoPolling();state.cashRequest=null;state.cashStep="method";state.cryptoStatus="";render();
+          toast("Счёт CryptoBot истёк. Создайте новый.");
+        }else setCryptoStatus("Платёж пока не найден — проверяем снова…");
+      }catch(e){
+        if(state.cashRequest&&String(state.cashRequest.invoice_id)===invoiceId){
+          if(manual)toast(e.message||"Не удалось проверить платёж");
+          else{console.error("Ошибка фоновой проверки CryptoBot",e);setCryptoStatus("Проверка временно недоступна — повторяем…");}
+        }
+      }finally{
+        state.cryptoChecking=false;
+        if(button&&document.body.contains(button)&&button.dataset.invoiceId===invoiceId)button.disabled=false;
+      }
+    }
+    function startCryptoPolling(){
+      stopCryptoPolling();
+      setCryptoStatus("Ожидаем оплату в CryptoBot…");
+      checkCryptoInvoice(false);
+      state.cryptoPollTimer=setInterval(function(){checkCryptoInvoice(false);},4000);
+    }
     async function cancelDepositRequest(){
       var request=state.cashRequest;
       try{
         if(request&&request.id)await rpc("cancel_deposit_request",{p_transaction_id:request.id});
-        stopPaymentTimer();state.cashRequest=null;state.cashStep="method";state.modal=null;render();
+        stopPaymentTimer();stopCryptoPolling();state.cashRequest=null;state.cashStep="method";state.cryptoStatus="";state.modal=null;render();
         toast("Заявка на оплату отменена");
       }catch(e){toast(e.message||"Не удалось отменить заявку");}
     }
@@ -427,6 +520,17 @@
       state.amount=amount;state.promo=promoInput?promoInput.value.trim():state.promo;
       state.paymentCreating=true;
       try{
+        if(state.method==="cryptobot"){
+          var cryptoResult=await rpc("md_create_cryptobot_invoice",{
+            p_amount:state.amount,p_asset:state.cryptoAsset,p_promo_code:state.promo
+          });
+          if(!cryptoResult||!cryptoResult.invoice_id||!cryptoResult.pay_url||!cryptoResult.transaction_id)
+            throw new Error("CryptoBot вернул неполные данные счёта");
+          state.cashRequest={id:cryptoResult.transaction_id,invoice_id:cryptoResult.invoice_id,pay_url:cryptoResult.pay_url,
+            asset:cryptoResult.asset,crypto_amount:cryptoResult.crypto_amount,payment_data:cryptoResult.payment_data||{}};
+          state.cashStep="payment";state.modal="cash";render();startCryptoPolling();
+          return;
+        }
         var r=await rpc("create_deposit",{p_amount:state.amount,p_method:state.method,p_promo_code:state.promo});
         if(state.method==="demo"){
           var credited=Number(r.credited||Number(r.amount)+Number(r.bonus||0));
@@ -508,7 +612,17 @@
       var a=b.dataset.action;
       if(a==="nav"){state.page=b.dataset.page;state.caseId=null;state.menu=false;if(state.page==="admin"&&!isAdmin()){state.page="cases";return toast("Недостаточно прав администратора");}if(state.page==="admin")loadAdmin();render();}
       else if(a==="menu"){state.menu=!state.menu;render();}
-      else if(a==="cash"){stopPaymentTimer();state.cashRequest=null;state.modal="cash";state.cashTab="deposit";state.cashStep="method";render();}
+      else if(a==="cash"){
+        stopPaymentTimer();
+        if(state.cashRequest&&state.cashRequest.invoice_id){
+          state.modal="cash";state.cashTab="deposit";state.cashStep="payment";
+          if(!state.cryptoPollTimer)startCryptoPolling();
+        }else{
+          stopCryptoPolling();state.cashRequest=null;state.cryptoStatus="";
+          state.modal="cash";state.cashTab="deposit";state.cashStep="method";
+        }
+        render();
+      }
       else if(a==="withdraw"){if(!state.user){state.modal="auth";state.authMode="login";render();}else{state.modal="withdraw";state.cashTab="withdraw";render();}}
       else if(a==="modal-close"){if(state.cashRequest)cancelDepositRequest();else{stopPaymentTimer();state.modal=null;state.cashStep="method";render();}}
       else if(a==="cash-tab"){state.cashTab=b.dataset.tab;state.modal=state.cashTab==="withdraw"?"withdraw":"cash";render();}
@@ -519,6 +633,8 @@
       else if(a==="cash-back"){state.cashStep="method";render();}
       else if(a==="cash-paid")paidDeposit();
       else if(a==="cash-cancel")cancelDepositRequest();
+      else if(a==="crypto-hide"){state.modal=null;render();}
+      else if(a==="crypto-check")checkCryptoInvoice(true);
       else if(a==="copy-payment")copyPaymentValue(b.dataset.copy||"");
       else if(a==="withdraw-create")createWithdraw();
       else if(a==="open-case"){state.caseId=b.dataset.id;render();}
@@ -577,6 +693,18 @@
         if(secret.length<32)return toast("Секрет должен содержать минимум 32 символа");
         rpc("admin_set_webhook_secret",{p_secret_key:secret}).then(function(){document.getElementById("webhook-secret").value="";toast("Webhook-секрет сохранён");}).catch(function(x){toast(x.message);});
       }
+      else if(a==="admin-save-cryptobot"){
+        var cryptoToken=document.getElementById("setting-cryptobot-token").value.trim();
+        var usdtRub=Number(document.getElementById("setting-usdt-rub-rate").value),tonRub=Number(document.getElementById("setting-ton-rub-rate").value);
+        if(!Number.isFinite(usdtRub)||usdtRub<=0||!Number.isFinite(tonRub)||tonRub<=0)return toast("Курсы USDT и TON должны быть больше нуля");
+        rpc("admin_save_cryptobot_settings",{
+          p_token:cryptoToken,p_usdt_rub_rate:usdtRub,p_ton_rub_rate:tonRub,
+          p_enabled:document.getElementById("setting-enable-cryptobot").checked
+        }).then(function(){
+          document.getElementById("setting-cryptobot-token").value="";
+          return refreshPublic();
+        }).then(loadAdmin).then(function(){toast("Настройки CryptoBot сохранены");}).catch(function(x){toast(x.message||"Не удалось сохранить CryptoBot");});
+      }
       else if(a==="admin-save-promo"){rpc("admin_save_promocode",{p_code:document.getElementById("promo-code").value,p_reward:Number(document.getElementById("promo-reward").value),p_activations:Number(document.getElementById("promo-limit").value)}).then(function(){toast("Промокод сохранен");}).catch(function(x){toast(x.message);});}
       else if(a==="admin-generate-promo"){var code="MD"+Math.random().toString(36).slice(2,8).toUpperCase();document.getElementById("promo-code").value=code;}
     });
@@ -584,6 +712,7 @@
     document.addEventListener("change",function(e){
       var target=e.target;
       if(target.id==="setting-rtp"){var out=document.getElementById("rtp-output");if(out)out.value=target.value+"%";}
+      if(target.id==="crypto-asset")state.cryptoAsset=target.value;
       if(target.id==="case-image"||target.matches('[data-prize-field="image_url"]')){collectCaseEditor();render();return;}
       if(target.matches('[data-image-kind]')){
         var file=target.files&&target.files[0];if(!file)return;
